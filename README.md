@@ -4,8 +4,8 @@
 A basic in-game cheat menu
 
 ## Installation (Manual)
-Get setup for mods (get on the modding tools beta branch). Download
-this repo as a .zip, and extract into your `Noita/mods/` directory (so this README
+Get setup for mods (get on the modding tools beta branch). [Download
+this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/master.zip), and extract into your `Noita/mods/` directory (so this README
 should end up in `Noita/mods/cheatgui/README.md`). Then enable
 the 'cheatgui' mod through the in-game pause menu.
 
