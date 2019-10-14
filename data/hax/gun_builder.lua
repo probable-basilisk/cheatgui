@@ -31,8 +31,12 @@ function build_gun(x, y, gun)
 	ComponentSetValue( ability_comp, "mana_charge_speed", gun["mana_charge_speed"])
 	ComponentSetValue( ability_comp, "mana_max", gun["mana_max"])
 	ComponentSetValue( ability_comp, "mana", gun["mana_max"])
-	ComponentSetValue( ability_comp, "item_recoil_recovery_speed", 15.0 ) -- TODO: implement logic for setting this
+  ComponentSetValue( ability_comp, "item_recoil_recovery_speed", 15.0 ) -- TODO: implement logic for setting this
+  
+  if gun["always_cast"] then
+    AddGunActionPermanent( entity_id, gun["always_cast"] )
+  end
 
-	local wand = GetWand( gun )
-	SetWandSprite( entity_id, ability_comp, wand.file, wand.grip_x, wand.grip_y, (wand.tip_x - wand.grip_x), (wand.tip_y - wand.grip_y) )
+  local wand = GetWand( gun )
+  SetWandSprite( entity_id, ability_comp, wand.file, wand.grip_x, wand.grip_y, (wand.tip_x - wand.grip_x), (wand.tip_y - wand.grip_y) )
 end

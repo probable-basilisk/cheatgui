@@ -25,7 +25,7 @@ local gui = _cheat_gui
 
 local hax_btn_id = 123
 
-local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel
+local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel
 
 closed_panel = function()
   GuiLayoutBeginVertical( gui, 1, 0 )
@@ -217,6 +217,8 @@ local delay_widget, delay_val = create_numerical("Delay", {0.01, 0.1}, 0.5)
 local spread_widget, spread_val = create_numerical("Spread", {0.1, 1}, 0.0)
 local speed_widget, speed_val = create_numerical("Speed", {0.01, 0.1}, 1.0)
 
+local always_cast_choice = nil
+
 builder_panel = function()
   local button_id = hax_btn_id + 1
   --GuiLayoutBeginVertical(gui, 2, 11)
@@ -238,7 +240,11 @@ builder_panel = function()
   end
   GuiLayoutEnd( gui)
 
-  if GuiButton( gui, 1*4, 46*4, "[Spawn]", button_id+3) then
+  if GuiButton( gui, 1*4, 48*3.5, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
+    _gui_frame_function = always_cast_panel
+    return
+  end
+  if GuiButton( gui, 1*4, 48*4, "[Spawn]", button_id+3) then
     local x, y = get_player_pos()
     local gun = {
       deck_capacity = slots_val.value,
@@ -249,7 +255,8 @@ builder_panel = function()
       spread_degrees = spread_val.value,
       speed_multiplier = speed_val.value,
       mana_max = mana_val.value,
-      mana_charge_speed = mana_rec_val.value
+      mana_charge_speed = mana_rec_val.value,
+      always_cast = always_cast_choice
     }
     build_gun(x, y, gun)
   end
@@ -272,7 +279,22 @@ local function spawn_spell_button(card)
   CreateItemActionEntity( card.id, x, y )
 end
 
+local function set_always_cast(card)
+  always_cast_choice = card.id
+  _gui_frame_function = builder_panel
+end
+
 local spell_options = {}
+local always_cast_options = {
+  {
+    text = "None", 
+    f = function()
+      always_cast_choice = nil
+      _gui_frame_function = builder_panel
+    end
+  }
+}
+
 for idx, card in ipairs(actions) do
   local ui_name = resolve_localized_name(card.name)
   local id = card.id:lower()
@@ -281,6 +303,11 @@ for idx, card in ipairs(actions) do
     text = localized_name,
     id = id, ui_name = ui_name,
     f = spawn_spell_button
+  }
+  always_cast_options[idx+1] = {
+    text = localized_name,
+    id = id, ui_name = ui_name,
+    f = set_always_cast
   }
 end
 
@@ -430,6 +457,7 @@ local function wrap_localized(f)
   end
 end
 
+always_cast_panel = wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))
 cards_panel = wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))
 perk_panel = wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))
 flasks_panel = wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))
