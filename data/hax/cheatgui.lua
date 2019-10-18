@@ -381,9 +381,31 @@ local seedval = "?"
 SetRandomSeed(0, 0)
 seedval = tostring(Random() * 2^31)
 
-local LC, AP = get_alchemy()
-LC = table.concat(LC, ", ")
-AP = table.concat(AP, ", ")
+local LC, AP, LC_prob, AP_prob = get_alchemy()
+
+local function localize_material(mat)
+  local n = GameTextGet("$mat_" .. mat)
+  if n and n ~= "" then return n else return "[" .. mat .. "]" end
+end
+
+local function format_combo(combo, prob, localize)
+  local ret = {}
+  for idx, mat in ipairs(combo) do
+    ret[idx] = (localize and localize_material(mat)) or mat
+  end
+  return table.concat(ret, ", ") .. " (" .. prob .. "%)"
+end
+
+local alchemy_combos = {
+  AP = {
+    [false]=format_combo(AP, AP_prob, false),
+    [true]=format_combo(AP, AP_prob, true)
+  },
+  LC = {
+    [false]=format_combo(LC, LC_prob, false),
+    [true]=format_combo(LC, LC_prob, true)
+  }
+}
 
 local extra_buttons = {}
 function register_cheat_button(title, f)
@@ -440,8 +462,17 @@ register_cheat_button(function()
   return ((tourist_mode_on and "Disable") or "Enable") .. " tourist mode"
 end, toggle_tourist_mode)
 
-register_cheat_button("LC: " .. LC)
-register_cheat_button("AP: " .. AP)
+local localize_alchemy = false
+for _, recipe in ipairs{"LC", "AP"} do
+  register_cheat_button(
+    function()
+      return ("%s: %s"):format(recipe, alchemy_combos[recipe][localize_alchemy])
+    end, 
+    function()
+      localize_alchemy = not localize_alchemy
+    end
+  )
+end
 
 register_cheat_button("Spawn Orbs", function()
   local x, y = get_player_pos()
