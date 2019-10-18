@@ -1,7 +1,7 @@
 ![Screenshot of the cheat menu as it appears in Noita](/screenshot.jpg?raw=true)
 
 # Noita Cheat GUI
-A basic in-game cheat menu
+A basic in-game cheat menu. Note: if you just want to see the alchemy recipes without all the other cheat functionality, [there is a mod for that](https://github.com/probable-basilisk/alchemyrecipes).
 
 ## Installation (Manual)
 Get setup for mods (get on the modding tools beta branch). [Download
