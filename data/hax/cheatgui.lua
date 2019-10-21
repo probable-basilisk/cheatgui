@@ -9,6 +9,7 @@ dofile( "data/scripts/gun/gun_actions.lua" )
 dofile( "data/hax/materials.lua")
 dofile( "data/hax/alchemy.lua")
 dofile( "data/hax/gun_builder.lua")
+dofile( "data/hax/superhackykb.lua")
 
 local created_gui = false
 
@@ -30,7 +31,6 @@ local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_pan
 closed_panel = function()
   GuiLayoutBeginVertical( gui, 1, 0 )
   if GuiButton( gui, 0, 0, "[+]", hax_btn_id ) then
-    print("2")
     _gui_frame_function = menu_panel
   end
   GuiLayoutEnd( gui)
@@ -112,6 +112,17 @@ local function grid_panel(title, options, col_width)
   grid_layout(options, col_width)
 end
 
+local function filter_options(options, str)
+  local ret = {}
+  for _, opt in ipairs(options) do
+    local text = maybe_call(opt.text, opt):upper()
+    if text:find(str) then
+      table.insert(ret, opt)
+    end
+  end
+  return ret
+end
+
 local function wrap_paginate(title, options, page_size)
   page_size = page_size or (28*4 - 2)
   local cur_page = 1
@@ -137,8 +148,26 @@ local function wrap_paginate(title, options, page_size)
       end})
     end
   end
-  return function()
-    grid_panel(title, pages[cur_page])
+  local filtered_set = options
+  local filter_str = ""
+  return function(force_refilter)
+    local prev_filter = filter_str
+    filter_str = hack_type(filter_str)
+
+    if (not filter_str) or (filter_str == "") then
+      grid_panel(title, pages[cur_page])
+    else
+      if (prev_filter ~= filter_str) or force_refilter then
+        filtered_set = filter_options(options, filter_str)
+        prev_filter = filter_str
+      end
+      GuiLayoutBeginVertical( gui, 31, 3 )
+      if GuiButton( gui, 0, 0, " Filter:                               " .. filter_str, hax_btn_id+11 ) then
+        filter_str = ""
+      end
+      GuiLayoutEnd( gui)
+      grid_panel(title, filtered_set)
+    end
   end
 end
 
@@ -322,7 +351,7 @@ for idx, perk in ipairs(perk_list) do
   perk_options[idx] = {
     text = localized_name, 
     id = perk.id,
-    ui_name = perk.ui_name, 
+    ui_name = resolve_localized_name(perk.ui_name, perk.id), 
     f = spawn_perk_button
   }
 end
@@ -482,9 +511,12 @@ register_cheat_button("Spawn Orbs", function()
 end)
 
 local function wrap_localized(f)
+  local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+1, 50, 7)
-    f()
+    localization_widget(hax_btn_id+1, 50, 8)
+    local localization_changed = (prev_localization ~= localization_val.value)
+    prev_localization = localization_val.value
+    f(localization_changed)
   end
 end
 
