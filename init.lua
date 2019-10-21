@@ -10,12 +10,17 @@ function OnModPostInit()
 	-- Nothing to do but this function has to exist
 end
 
-function OnPlayerSpawned( player_entity )
+function OnWorldPreUpdate()
 	-- Nothing to do but this function has to exist
 end
 
--- `director_init` is a good target for injecting stuff
--- that needs to stay around all the time
--- (the player entity is a bad choice because it gets
---  destroyed when you polymorph)
-ModLuaFileAppend( "data/scripts/director_init.lua", "data/hax/hax.lua" )
+function OnWorldPostUpdate() 
+	-- Nothing to do but this function has to exist
+end
+
+function OnPlayerSpawned( player_entity )
+	-- -- check if cheatgui has somehow already been serialized?
+	-- local gui = EntityGetWithTag( "cheatgui_container" )
+	-- if (not gui)
+  EntityLoad("data/hax/guicontainer.xml")
+end
