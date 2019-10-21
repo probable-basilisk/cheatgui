@@ -1,7 +1,15 @@
 materials_list = {}
-local function get_name(mat)
-  local n = GameTextGet("$mat_" .. mat)
-  if n and n ~= "" then return n else return "[" .. mat .. "]" end
+
+local get_name = function(mat)
+  return mat
+end
+
+if not DebugGetIsDevBuild() then
+  -- Dev build likes to complain about translations
+  get_name = function(mat)
+    local n = GameTextGet("$mat_" .. mat)
+    if n and n ~= "" then return n else return "[" .. mat .. "]" end
+  end
 end
 
 for _, category in ipairs{"Liquids", "Solids", "Sands", "Gases", "Fires"} do

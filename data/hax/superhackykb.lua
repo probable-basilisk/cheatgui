@@ -1,8 +1,25 @@
+print("Loading hacky KB?")
+
 if _hacky_keyboard_defined then
   return
 end
 
 _hacky_keyboard_defined = true
+
+hack_type = function()
+  return ""
+end
+
+if not require then
+  print("No require? Urgh.")
+  return
+end
+
+local ffi = require('ffi')
+if not ffi then
+  print("No FFI? Well that's a pain.")
+  return
+end
 
 local a_to_code = {}
 a_to_code.UNKNOWN = 0
@@ -252,7 +269,6 @@ for string_name, code in pairs(a_to_code) do
   code_to_a[code] = string_name
 end
 
-local ffi = require'ffi'
 ffi.cdef([[
   const uint8_t* SDL_GetKeyboardState(int* numkeys);
 ]])
@@ -276,7 +292,7 @@ function hack_update_keys()
   return pressed
 end
 
-function hack_type(current_str)
+hack_type = function(current_str)
   local pressed = hack_update_keys()
   for _, key in ipairs(pressed) do
     if #key == 1 then
@@ -287,3 +303,5 @@ function hack_type(current_str)
   end
   return current_str
 end
+
+print("Hacky KB loaded?")
