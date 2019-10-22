@@ -11,6 +11,14 @@ dofile( "data/hax/alchemy.lua")
 dofile( "data/hax/gun_builder.lua")
 dofile( "data/hax/superhackykb.lua")
 
+print("Checking require?")
+print("Require exists HERE?")
+if not require then
+  print("NO require.")
+else
+  print("YES require.")
+end
+
 local created_gui = false
 
 if not _cheat_gui then
@@ -531,21 +539,24 @@ end
 
 _gui_frame_function = menu_panel
 
-if created_gui then
-  print("Starting GUI loop")
-  async_loop(function()
-    if gui ~= nil then
-      GuiStartFrame( gui )
-    end
+function _cheat_gui_main()
+  if gui ~= nil then
+    GuiStartFrame( gui )
+  end
 
-    if _gui_frame_function ~= nil then
-      local happy, errstr = pcall(_gui_frame_function)
-      if not happy then
-        print("Gui error: " .. errstr)
-        _gui_frame_function = nil
-      end
+  if _gui_frame_function ~= nil then
+    local happy, errstr = pcall(_gui_frame_function)
+    if not happy then
+      print("Gui error: " .. errstr)
+      _gui_frame_function = nil
     end
-
-    wait(0)
-  end)
+  end
 end
+
+-- if created_gui then
+--   print("Starting GUI loop")
+--   async_loop(function()
+--     _cheat_gui_main()
+--     wait(0)
+--   end)
+-- end

@@ -15,12 +15,15 @@ function OnWorldPreUpdate()
 end
 
 function OnWorldPostUpdate() 
-	-- Nothing to do but this function has to exist
+	if _cheat_gui_main then _cheat_gui_main() end
 end
 
 function OnPlayerSpawned( player_entity )
-	-- -- check if cheatgui has somehow already been serialized?
-	-- local gui = EntityGetWithTag( "cheatgui_container" )
-	-- if (not gui)
-  EntityLoad("data/hax/guicontainer.xml")
+	print("OnPlayerSpawned require check:")
+	if not require then
+		print("NO require.")
+	else
+		print("YES require.")
+	end
+	dofile("data/hax/cheatgui.lua")
 end
