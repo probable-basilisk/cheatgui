@@ -30,12 +30,17 @@ ffi.cdef([[
 _SDL = ffi.load('SDL2.dll')
 
 local code_to_a = {}
+local shifts = {}
+
 for i = 0, 284 do
   local keycode = _SDL.SDL_GetKeyFromScancode(i)
   if keycode > 0 then
     local keyname = ffi.string(_SDL.SDL_GetKeyName(keycode))
     if keyname and #keyname > 0 then
       code_to_a[i] = keyname:lower()
+      if keyname:lower():find("shift") then
+        table.insert(shifts, i)
+      end
     end
   end
 end
@@ -55,7 +60,14 @@ function hack_update_keys()
     end
     prev_state[scancode] = keys[scancode]
   end
-  return pressed
+  local shift_held = false
+  for _, shiftcode in ipairs(shifts) do
+    if keys[shiftcode] > 0 then
+      shift_held = true
+      break
+    end
+  end
+  return pressed, shift_held
 end
 
 local REPLACEMENTS = {
@@ -63,11 +75,11 @@ local REPLACEMENTS = {
 }
 
 hack_type = function(current_str)
-  local pressed = hack_update_keys()
+  local pressed, shift_held = hack_update_keys()
   for _, key in ipairs(pressed) do
-    if REPLACEMENTS[key] then
+    if shift_held and REPLACEMENTS[key] then
       current_str = current_str .. REPLACEMENTS[key]
-    elseif #key == 1 then
+    elseif shift_held and (#key == 1) then
       current_str = current_str .. key
     elseif key == "backspace" then
       current_str = current_str:sub(1,-2)

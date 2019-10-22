@@ -161,6 +161,18 @@ local function wrap_paginate(title, options, page_size)
   return function(force_refilter)
     local prev_filter = filter_str
     filter_str = hack_type(filter_str)
+    local filter_text = " Filter:                               "
+    if filter_str and (filter_str ~= "") then
+      filter_text = filter_text .. filter_str
+    else
+      filter_text = filter_text .. "[shift+type to filter]"
+    end
+
+    GuiLayoutBeginVertical( gui, 31, 0 )
+    if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
+      filter_str = ""
+    end
+    GuiLayoutEnd( gui)
 
     if (not filter_str) or (filter_str == "") then
       grid_panel(title, pages[cur_page])
@@ -169,11 +181,6 @@ local function wrap_paginate(title, options, page_size)
         filtered_set = filter_options(options, filter_str)
         prev_filter = filter_str
       end
-      GuiLayoutBeginVertical( gui, 31, 3 )
-      if GuiButton( gui, 0, 0, " Filter:                               " .. filter_str, hax_btn_id+11 ) then
-        filter_str = ""
-      end
-      GuiLayoutEnd( gui)
       grid_panel(title, filtered_set)
     end
   end
@@ -521,7 +528,7 @@ end)
 local function wrap_localized(f)
   local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+1, 50, 8)
+    localization_widget(hax_btn_id+1, 50, 3)
     local localization_changed = (prev_localization ~= localization_val.value)
     prev_localization = localization_val.value
     f(localization_changed)
