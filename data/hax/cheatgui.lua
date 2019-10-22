@@ -123,7 +123,7 @@ end
 local function filter_options(options, str)
   local ret = {}
   for _, opt in ipairs(options) do
-    local text = maybe_call(opt.text, opt):upper()
+    local text = maybe_call(opt.text, opt):lower()
     if text:find(str) then
       table.insert(ret, opt)
     end
