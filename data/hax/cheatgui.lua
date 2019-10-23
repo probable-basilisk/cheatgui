@@ -34,7 +34,7 @@ local gui = _cheat_gui
 
 local hax_btn_id = 123
 
-local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel
+local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel
 
 closed_panel = function()
   GuiLayoutBeginVertical( gui, 1, 0 )
@@ -50,6 +50,10 @@ end
 
 local function get_player_pos()
   return EntityGetTransform(get_player())
+end
+
+local function teleport(x, y)
+  EntitySetTransform(get_player(), x, y)
 end
 
 local function set_health(hp)
@@ -306,6 +310,34 @@ builder_panel = function()
   end
 end
 
+local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0)
+local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0)
+
+teleport_panel = function()
+  local button_id = hax_btn_id + 20
+  button_id = xpos_widget(button_id, 1, 12)
+  button_id = ypos_widget(button_id, 1, 16)
+
+  GuiLayoutBeginVertical( gui, 1, 0 )
+  GuiText( gui, 0,0, "Teleport")
+  if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
+    _gui_frame_function = closed_panel
+  end
+  GuiLayoutEnd( gui)
+
+  if GuiButton( gui, 1*4, 20*3.5, "[Get current position]", button_id+1) then
+    local x, y = get_player_pos()
+    xpos_val.value, ypos_val.value = math.floor(x), math.floor(y)
+  end
+  if GuiButton( gui, 1*4, 24*3.5, "[Zero position]", button_id+2) then
+    xpos_val.value, ypos_val.value = 0, 0
+  end
+  if GuiButton( gui, 1*4, 28*3.5, "[Teleport]", button_id+3) then
+    GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
+    teleport(xpos_val.value, ypos_val.value)
+  end
+end
+
 -- build these button lists once so we aren't rebuilding them every frame
 local function resolve_localized_name(s, default)
   if s:sub(1,1) ~= "$" then return s end
@@ -488,6 +520,9 @@ menu_panel = function()
   end
   if GuiButton( gui, 0, 0, "Wand builder", hax_btn_id+8) then
     _gui_frame_function = builder_panel
+  end
+  if GuiButton( gui, 0, 0, "Teleport", hax_btn_id+3) then
+    _gui_frame_function = teleport_panel
   end
   draw_extra_buttons(9)
   if GuiButton( gui, 0, 0, "Close", hax_btn_id+2) then
