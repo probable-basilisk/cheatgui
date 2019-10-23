@@ -62,8 +62,13 @@ local function random_recipe(rand_state, seed)
   rand_state, m3 = random_material(rand_state, liqs)
   rand_state, m4 = random_material(rand_state, orgs)
   local combo = {m1, m2, m3, m4}
+
+  rand_state = hax_prng_next(rand_state)
+  local prob = 10 + math.floor((rand_state / 2^31) * 91)
+  rand_state = hax_prng_next(rand_state)
+
   shuffle(combo, seed)
-  return rand_state, {combo[1], combo[2], combo[3]}
+  return rand_state, {combo[1], combo[2], combo[3]}, prob
 end
 
 function get_alchemy()
@@ -75,10 +80,8 @@ function get_alchemy()
   end
 
   local lc_combo, ap_combo = {"?"}, {"?"}
-  rand_state, lc_combo = random_recipe(rand_state, seed)
-  rand_state = hax_prng_next(rand_state)
-  rand_state = hax_prng_next(rand_state)
-  rand_state, ap_combo = random_recipe(rand_state, seed)
+  rand_state, lc_combo, lc_prob = random_recipe(rand_state, seed)
+  rand_state, ap_combo, ap_prob = random_recipe(rand_state, seed)
 
-  return lc_combo, ap_combo
+  return lc_combo, ap_combo, lc_prob, ap_prob
 end

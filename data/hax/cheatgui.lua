@@ -9,6 +9,15 @@ dofile( "data/scripts/gun/gun_actions.lua" )
 dofile( "data/hax/materials.lua")
 dofile( "data/hax/alchemy.lua")
 dofile( "data/hax/gun_builder.lua")
+dofile( "data/hax/superhackykb.lua")
+
+print("Checking require?")
+print("Require exists HERE?")
+if not require then
+  print("NO require.")
+else
+  print("YES require.")
+end
 
 local created_gui = false
 
@@ -25,12 +34,11 @@ local gui = _cheat_gui
 
 local hax_btn_id = 123
 
-local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel
+local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel
 
 closed_panel = function()
   GuiLayoutBeginVertical( gui, 1, 0 )
   if GuiButton( gui, 0, 0, "[+]", hax_btn_id ) then
-    print("2")
     _gui_frame_function = menu_panel
   end
   GuiLayoutEnd( gui)
@@ -42,6 +50,10 @@ end
 
 local function get_player_pos()
   return EntityGetTransform(get_player())
+end
+
+local function teleport(x, y)
+  EntitySetTransform(get_player(), x, y)
 end
 
 local function set_health(hp)
@@ -112,6 +124,17 @@ local function grid_panel(title, options, col_width)
   grid_layout(options, col_width)
 end
 
+local function filter_options(options, str)
+  local ret = {}
+  for _, opt in ipairs(options) do
+    local text = maybe_call(opt.text, opt):lower()
+    if text:find(str) then
+      table.insert(ret, opt)
+    end
+  end
+  return ret
+end
+
 local function wrap_paginate(title, options, page_size)
   page_size = page_size or (28*4 - 2)
   local cur_page = 1
@@ -137,8 +160,33 @@ local function wrap_paginate(title, options, page_size)
       end})
     end
   end
-  return function()
-    grid_panel(title, pages[cur_page])
+  local filtered_set = options
+  local filter_str = ""
+  return function(force_refilter)
+    local prev_filter = filter_str
+    filter_str = hack_type(filter_str)
+    local filter_text = " Filter:                               "
+    if filter_str and (filter_str ~= "") then
+      filter_text = filter_text .. filter_str
+    else
+      filter_text = filter_text .. "[shift+type to filter]"
+    end
+
+    GuiLayoutBeginVertical( gui, 31, 0 )
+    if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
+      filter_str = ""
+    end
+    GuiLayoutEnd( gui)
+
+    if (not filter_str) or (filter_str == "") then
+      grid_panel(title, pages[cur_page])
+    else
+      if (prev_filter ~= filter_str) or force_refilter then
+        filtered_set = filter_options(options, filter_str)
+        prev_filter = filter_str
+      end
+      grid_panel(title, filtered_set)
+    end
   end
 end
 
@@ -262,6 +310,34 @@ builder_panel = function()
   end
 end
 
+local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0)
+local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0)
+
+teleport_panel = function()
+  local button_id = hax_btn_id + 20
+  button_id = xpos_widget(button_id, 1, 12)
+  button_id = ypos_widget(button_id, 1, 16)
+
+  GuiLayoutBeginVertical( gui, 1, 0 )
+  GuiText( gui, 0,0, "Teleport")
+  if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
+    _gui_frame_function = closed_panel
+  end
+  GuiLayoutEnd( gui)
+
+  if GuiButton( gui, 1*4, 20*3.5, "[Get current position]", button_id+1) then
+    local x, y = get_player_pos()
+    xpos_val.value, ypos_val.value = math.floor(x), math.floor(y)
+  end
+  if GuiButton( gui, 1*4, 24*3.5, "[Zero position]", button_id+2) then
+    xpos_val.value, ypos_val.value = 0, 0
+  end
+  if GuiButton( gui, 1*4, 28*3.5, "[Teleport]", button_id+3) then
+    GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
+    teleport(xpos_val.value, ypos_val.value)
+  end
+end
+
 -- build these button lists once so we aren't rebuilding them every frame
 local function resolve_localized_name(s, default)
   if s:sub(1,1) ~= "$" then return s end
@@ -322,7 +398,7 @@ for idx, perk in ipairs(perk_list) do
   perk_options[idx] = {
     text = localized_name, 
     id = perk.id,
-    ui_name = perk.ui_name, 
+    ui_name = resolve_localized_name(perk.ui_name, perk.id), 
     f = spawn_perk_button
   }
 end
@@ -381,9 +457,31 @@ local seedval = "?"
 SetRandomSeed(0, 0)
 seedval = tostring(Random() * 2^31)
 
-local LC, AP = get_alchemy()
-LC = table.concat(LC, ", ")
-AP = table.concat(AP, ", ")
+local LC, AP, LC_prob, AP_prob = get_alchemy()
+
+local function localize_material(mat)
+  local n = GameTextGet("$mat_" .. mat)
+  if n and n ~= "" then return n else return "[" .. mat .. "]" end
+end
+
+local function format_combo(combo, prob, localize)
+  local ret = {}
+  for idx, mat in ipairs(combo) do
+    ret[idx] = (localize and localize_material(mat)) or mat
+  end
+  return table.concat(ret, ", ") .. " (" .. prob .. "%)"
+end
+
+local alchemy_combos = {
+  AP = {
+    [false]=format_combo(AP, AP_prob, false),
+    [true]=format_combo(AP, AP_prob, true)
+  },
+  LC = {
+    [false]=format_combo(LC, LC_prob, false),
+    [true]=format_combo(LC, LC_prob, true)
+  }
+}
 
 local extra_buttons = {}
 function register_cheat_button(title, f)
@@ -423,6 +521,9 @@ menu_panel = function()
   if GuiButton( gui, 0, 0, "Wand builder", hax_btn_id+8) then
     _gui_frame_function = builder_panel
   end
+  if GuiButton( gui, 0, 0, "Teleport", hax_btn_id+3) then
+    _gui_frame_function = teleport_panel
+  end
   draw_extra_buttons(9)
   if GuiButton( gui, 0, 0, "Close", hax_btn_id+2) then
     _gui_frame_function = closed_panel
@@ -440,8 +541,17 @@ register_cheat_button(function()
   return ((tourist_mode_on and "Disable") or "Enable") .. " tourist mode"
 end, toggle_tourist_mode)
 
-register_cheat_button("LC: " .. LC)
-register_cheat_button("AP: " .. AP)
+local localize_alchemy = false
+for _, recipe in ipairs{"LC", "AP"} do
+  register_cheat_button(
+    function()
+      return ("%s: %s"):format(recipe, alchemy_combos[recipe][localize_alchemy])
+    end, 
+    function()
+      localize_alchemy = not localize_alchemy
+    end
+  )
+end
 
 register_cheat_button("Spawn Orbs", function()
   local x, y = get_player_pos()
@@ -451,9 +561,12 @@ register_cheat_button("Spawn Orbs", function()
 end)
 
 local function wrap_localized(f)
+  local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+1, 50, 7)
-    f()
+    localization_widget(hax_btn_id+1, 50, 3)
+    local localization_changed = (prev_localization ~= localization_val.value)
+    prev_localization = localization_val.value
+    f(localization_changed)
   end
 end
 
@@ -468,21 +581,24 @@ end
 
 _gui_frame_function = menu_panel
 
-if created_gui then
-  print("Starting GUI loop")
-  async_loop(function()
-    if gui ~= nil then
-      GuiStartFrame( gui )
-    end
+function _cheat_gui_main()
+  if gui ~= nil then
+    GuiStartFrame( gui )
+  end
 
-    if _gui_frame_function ~= nil then
-      local happy, errstr = pcall(_gui_frame_function)
-      if not happy then
-        print("Gui error: " .. errstr)
-        _gui_frame_function = nil
-      end
+  if _gui_frame_function ~= nil then
+    local happy, errstr = pcall(_gui_frame_function)
+    if not happy then
+      print("Gui error: " .. errstr)
+      _gui_frame_function = nil
     end
-
-    wait(0)
-  end)
+  end
 end
+
+-- if created_gui then
+--   print("Starting GUI loop")
+--   async_loop(function()
+--     _cheat_gui_main()
+--     wait(0)
+--   end)
+-- end
