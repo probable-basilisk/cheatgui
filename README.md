@@ -7,11 +7,14 @@ A basic in-game cheat menu. Note: if you just want to see the alchemy recipes wi
 
 You can either download the mod manually or clone this Git repo into the Noita `mods` sub-directory.
 
+### (Recommended: opt-in to the Steam beta branch of Noita)
+Cheatgui is developed against, and really only tested with, the beta branch. It'll _probably_ work with the non-beta,
+but it's not guaranteed.
+
 ### Download manually
 
-Get setup for mods (get on the modding tools beta branch). [Download
-this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/master.zip), and extract into your `Noita/mods/` directory (so this README
-should end up in `Noita/mods/cheatgui/README.md`).
+[Download this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/master.zip), 
+and extract into your `Noita/mods/` directory (so this README should end up in `Noita/mods/cheatgui/README.md`).
 
 ### (or) Clone the Git repo
 
