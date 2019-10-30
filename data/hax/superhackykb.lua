@@ -74,18 +74,21 @@ local REPLACEMENTS = {
   space = " "
 }
 
-hack_type = function(current_str)
+hack_type = function(current_str, no_shift)
   local pressed, shift_held = hack_update_keys()
+  local hit_enter = false
   for _, key in ipairs(pressed) do
-    if shift_held and REPLACEMENTS[key] then
+    if (no_shift or shift_held) and REPLACEMENTS[key] then
       current_str = current_str .. REPLACEMENTS[key]
-    elseif shift_held and (#key == 1) then
+    elseif (no_shift or shift_held) and (#key == 1) then
       current_str = current_str .. key
     elseif key == "backspace" then
       current_str = current_str:sub(1,-2)
+    elseif key == "enter" or key == "return" then
+      hit_enter = true
     end
   end
-  return current_str
+  return current_str, hit_enter
 end
 
 print("Hacky KB loaded?")

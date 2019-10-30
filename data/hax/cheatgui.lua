@@ -305,7 +305,11 @@ local function create_radio(title, options, default, x_spacing)
   -- end
   local wrapper = {
     index = selected, 
-    value = options[selected][2]
+    value = options[selected][2],
+    reset = function(_self)
+      _self.index = default
+      _self.value = options[default][2]
+    end
   }
   return function(button_id, xpos, ypos)
     button_id = (button_id or 200) + 1  
@@ -327,10 +331,68 @@ local function create_radio(title, options, default, x_spacing)
   end, wrapper
 end
 
-local function create_numerical(title, increments, default)
-  local wrapper = {
-    value = default or 0.0
+local function round(v)
+  local upper = math.ceil(v)
+  local lower = math.floor(v)
+  if math.abs(v - upper) < math.abs(v - lower) then
+    return upper
+  else
+    return lower
+  end
+end
+
+local num_types = {
+  float = {function(x) return x end, "%0.2f", 1.0},
+  int = {function(x) return round(x) end, "%d", 1.0},
+  frame = {function(x) return round(x) end, "%0.2f", 1.0/60.0}
+}
+
+local function create_numerical(title, increments, default, kind)
+  local validate, fstr, multiplier = unpack(num_types[kind or "float"])
+
+  local text_wrapper = {
+    value = "",
+    on_change = function(_self)
+      -- eh?
+    end,
+    on_gain_focus = function(_self)
+      _self.has_focus = true
+      _self.value = _self.numeric:display_val()
+    end,
+    set_value = function(_self)
+      local temp = tonumber(_self.value)
+      if temp then
+        _self.numeric.value = validate(temp / multiplier)
+      end
+    end,
+    on_lose_focus = function(_self)
+      _self.has_focus = false
+      _self:set_value()
+    end,
+    on_hit_enter = function(_self)
+      _self:set_value()
+      set_type_target(nil)
+    end,
+    display_val = function(_self)
+      if not _self.has_focus then return nil end
+      return _self.value .. "_"
+    end
   }
+
+  local wrapper = {
+    text = text_wrapper,
+    value = default or 0.0,
+    display_val = function(_self)
+      return fstr:format(_self.value * multiplier)
+    end,
+    temp_val = "",
+    reset = function(_self)
+      _self.value = default
+    end
+  }
+
+  text_wrapper.numeric = wrapper
+
   return function(button_id, xpos, ypos)
     button_id = (button_id or 200) + 1
     GuiLayoutBeginHorizontal(gui, xpos, ypos)
@@ -344,7 +406,14 @@ local function create_numerical(title, increments, default)
         end
         button_id = button_id + 1
       end
-      GuiText(gui, 0, 0, "" .. wrapper.value)
+      if GuiButton(gui, 0, 0, "" .. (text_wrapper:display_val() or wrapper:display_val()), button_id) then
+        if text_wrapper.has_focus then
+          set_type_target(nil)
+        else
+          set_type_target(text_wrapper)
+        end
+      end
+      button_id = button_id + 1
       for idx = 1, #increments do
         local s = "[" .. string.rep("+", idx) .. "]"
         if GuiButton( gui, 0, 0, s, button_id ) then
@@ -366,36 +435,47 @@ local shuffle_widget, shuffle_val = create_radio("Shuffle", {
   {"Yes", true}, {"No", false}
 }, 2)
 
-local mana_widget, mana_val = create_numerical("Mana", {50, 500}, 300)
-local mana_rec_widget, mana_rec_val = create_numerical("Mana Recharge", {10, 100}, 100)
-local slots_widget, slots_val = create_numerical("Slots", {1, 5}, 5)
-local multi_widget, multi_val = create_numerical("Multicast", {1}, 1)
-local reload_widget, reload_val = create_numerical("Reload", {0.01, 0.1}, 0.5)
-local delay_widget, delay_val = create_numerical("Delay", {0.01, 0.1}, 0.5)
-local spread_widget, spread_val = create_numerical("Spread", {0.1, 1}, 0.0)
-local speed_widget, speed_val = create_numerical("Speed", {0.01, 0.1}, 1.0)
+local mana_widget, mana_val = create_numerical("Mana", {50, 500}, 300, 'int')
+local mana_rec_widget, mana_rec_val = create_numerical("Mana Recharge", {10, 100}, 100, 'int')
+local slots_widget, slots_val = create_numerical("Slots", {1, 5}, 5, 'int')
+local multi_widget, multi_val = create_numerical("Multicast", {1}, 1, 'int')
+local reload_widget, reload_val = create_numerical("Reload", {1, 10}, 30, 'frame')
+local delay_widget, delay_val = create_numerical("Delay", {1, 10}, 30, 'frame')
+local spread_widget, spread_val = create_numerical("Spread", {0.1, 1}, 0.0, 'float')
+local speed_widget, speed_val = create_numerical("Speed", {0.01, 0.1}, 1.0, 'float')
 
 local always_cast_choice = nil
 
-builder_panel = Panel{"wand builder", function()
-  local button_id = hax_btn_id + 30
-  button_id = shuffle_widget(button_id, 1, 12)
-  button_id = mana_widget(button_id, 1, 16)
-  button_id = mana_rec_widget(button_id, 1, 20)
-  button_id = slots_widget(button_id, 1, 24)
-  button_id = multi_widget(button_id, 1, 28)
-  button_id = reload_widget(button_id, 1, 32)
-  button_id = delay_widget(button_id, 1, 36)
-  button_id = spread_widget(button_id, 1, 40)
-  button_id = speed_widget(button_id, 1, 44)
+local builder_widgets = {
+  {shuffle_widget, shuffle_val},
+  {mana_widget, mana_val},
+  {mana_rec_widget, mana_rec_val},
+  {slots_widget, slots_val},
+  {multi_widget, multi_val},
+  {reload_widget, reload_val},
+  {delay_widget, delay_val},
+  {spread_widget, spread_val},
+  {speed_widget, speed_val}
+}
 
+builder_panel = Panel{"wand builder", function()
   breadcrumbs(1, 0)
+
+  local button_id = hax_btn_id + 30
+  for idx, widget in ipairs(builder_widgets) do
+    button_id = widget[1](button_id, 1, 8 + idx*4)
+  end
 
   GuiLayoutBeginVertical(gui, 1, 48)
   if GuiButton( gui, 0, 0, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
     enter_panel(always_cast_panel)
   end
-  if GuiButton( gui, 0, 2, "[Spawn]", button_id+3) then
+  if GuiButton( gui, 0, 0, "[Reset all]", button_id+2) then
+    for _, widget in ipairs(builder_widgets) do
+      widget[2]:reset()
+    end
+  end
+  if GuiButton( gui, 0, 4, "[Spawn]", button_id+3) then
     local x, y = get_player_pos()
     local gun = {
       deck_capacity = slots_val.value,
@@ -414,8 +494,8 @@ builder_panel = Panel{"wand builder", function()
   GuiLayoutEnd(gui)
 end}
 
-local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0)
-local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0)
+local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0, 'int')
+local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0, 'int')
 
 teleport_panel = Panel{"teleport", function()
   local button_id = hax_btn_id + 20
@@ -630,7 +710,7 @@ local main_panels = {
 
 local function draw_main_panels(startid)
   for idx, panel in ipairs(main_panels) do
-    if GuiButton( gui, 0, 0, panel.name, hax_btn_id + idx ) then
+    if GuiButton( gui, 0, 0, panel.name, startid + idx ) then
       enter_panel(panel)
     end
   end
@@ -640,7 +720,7 @@ end
 menu_panel = Panel{"cheatgui", function()
   breadcrumbs(1, 0)
   GuiLayoutBeginVertical( gui, 1, 11 )
-  local next_id = draw_main_panels(hax_btn_id)
+  local next_id = draw_main_panels(hax_btn_id+4)
   draw_extra_buttons(next_id)
   GuiLayoutEnd( gui)
 end}
