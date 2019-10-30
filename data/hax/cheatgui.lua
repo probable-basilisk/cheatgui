@@ -62,7 +62,7 @@ local gui = _cheat_gui
 
 local hax_btn_id = 123
 
-local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel
+local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
 
 local function Panel(options)
   if not options.name then
@@ -112,6 +112,12 @@ local function hide_gui()
   _change_active_panel(closed_panel)
 end
 
+local function goto_subpanel(panel)
+  panel_stack = {}
+  enter_panel(menu_panel)
+  enter_panel(panel)
+end
+
 local function show_gui()
   if #panel_stack == 0 then
     enter_panel(menu_panel)
@@ -138,20 +144,62 @@ local function breadcrumbs(x, y)
   GuiLayoutEnd( gui )
 end
 
+local _info_widgets = {}
+local _sorted_info_widgets = {}
+local _all_info_widgets = {}
+
+local function _update_info_widgets()
+  _sorted_info_widgets = {}
+  for wname, widget in pairs(_info_widgets) do
+    table.insert(_sorted_info_widgets, {wname, widget})
+  end
+  table.sort(_sorted_info_widgets, function(a, b)
+    return a[1] < b[1]
+  end)
+end
+
+local function add_info_widget(wname, w)
+  _info_widgets[wname] = w
+  _update_info_widgets()
+end
+
+local function remove_info_widget(wname)
+  _info_widgets[wname] = nil
+  _update_info_widgets()
+end
+
+local function register_widget(wname, w)
+  table.insert(_all_info_widgets, {wname, w})
+end
+
 closed_panel = Panel{"[+]", function()
-  GuiLayoutBeginVertical( gui, 1, 0 )
+  GuiLayoutBeginHorizontal( gui, 1, 0 )
   if GuiButton( gui, 0, 0, "[+]", hax_btn_id ) then
     show_gui()
   end
-  GuiLayoutEnd( gui)
+  GuiLayoutEnd( gui )
+  local col_pos = 5
+  for idx, winfo in ipairs(_sorted_info_widgets) do
+    local wname, widget = unpack(winfo)
+    GuiLayoutBeginHorizontal(gui, col_pos, 0)
+    local text = widget:text()
+    if idx > 1 then text = "| " .. text end
+    if GuiButton( gui, 0, 0, text, hax_btn_id + idx + 1) then
+      widget:on_click()
+    end
+    GuiLayoutEnd( gui )
+    col_pos = col_pos + (widget.width or 10)
+  end
 end}
 
 local function get_player()
-  return EntityGetWithTag( "player_unit" )[1]
+  return (EntityGetWithTag( "player_unit" ) or {})[1]
 end
 
 local function get_player_pos()
-  return EntityGetTransform(get_player())
+  local player = get_player()
+  if not player then return 0, 0 end
+  return EntityGetTransform(player)
 end
 
 local function teleport(x, y)
@@ -704,8 +752,29 @@ wands_panel = Panel{"wands", function()
   grid_panel("Select a wand to spawn:", wand_options)
 end}
 
+info_panel = Panel{"widgets", function()
+  breadcrumbs(1, 0)
+  GuiLayoutBeginVertical(gui, 1, 11)
+  for idx, winfo in ipairs(_all_info_widgets) do
+    local wname, w = unpack(winfo)
+    local enabled = _info_widgets[wname] ~= nil
+    local text = w:text()
+    if enabled then
+      if GuiButton(gui, 0, 0, "[*] " .. text, hax_btn_id + 10 + idx) then
+        remove_info_widget(wname)
+      end
+    else
+      if GuiButton(gui, 0, 0, "[ ] " .. text, hax_btn_id + 10 + idx) then
+        GamePrint("Adding " .. wname .. " to info bar (minimize cheatgui to see)")
+        add_info_widget(wname, w)
+      end
+    end
+  end
+  GuiLayoutEnd(gui)
+end}
+
 local main_panels = {
-  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel
+  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel, info_panel
 }
 
 local function draw_main_panels(startid)
@@ -735,18 +804,6 @@ register_cheat_button(function()
   return ((tourist_mode_on and "Disable") or "Enable") .. " tourist mode"
 end, toggle_tourist_mode)
 
-local localize_alchemy = false
-for _, recipe in ipairs{"LC", "AP"} do
-  register_cheat_button(
-    function()
-      return ("%s: %s"):format(recipe, alchemy_combos[recipe][localize_alchemy])
-    end, 
-    function()
-      localize_alchemy = not localize_alchemy
-    end
-  )
-end
-
 register_cheat_button("Spawn Orbs", function()
   local x, y = get_player_pos()
   for i = 0, 13 do
@@ -755,6 +812,59 @@ register_cheat_button("Spawn Orbs", function()
 end)
 
 enter_panel(menu_panel)
+
+-- widgets
+local function StatsWidget(dispname, keyname, extra_pad)
+  local width = math.ceil(#dispname * 0.9) + (extra_pad or 3)
+  return {
+    text = function()
+      return ("%s: %s"):format(dispname, StatsGetValue(keyname) or "?")
+    end,
+    on_click = function()
+      goto_subpanel(info_panel)
+    end,
+    width = width
+  }
+end
+
+register_widget("playtime", StatsWidget("Playtime", "playtime_str", 6))
+register_widget("visited", StatsWidget("Visited", "places_visited"))
+register_widget("gold", StatsWidget("Gold", "gold_all"))
+register_widget("hearts", StatsWidget("Hearts", "heart_containers"))
+register_widget("items", StatsWidget("Items", "items"))
+register_widget("projectiles", StatsWidget("Shot", "projectiles_shot", 3))
+register_widget("kicks", StatsWidget("Kicked", "kicks"))
+register_widget("kills", StatsWidget("Kills", "enemies_killed"))
+
+register_widget("position", {
+  text = function()
+    local x, y = get_player_pos()
+    return ("X: %d, Y: %d"):format(x, y)
+  end,
+  on_click = function()
+    goto_subpanel(info_panel)
+  end,
+  width = 15
+})
+
+local localize_alchemy = false
+
+for _, recipe in ipairs{"LC", "AP"} do
+  local maxwidth = math.max(
+    #(alchemy_combos[recipe][true]), 
+    #(alchemy_combos[recipe][false])
+  )
+
+  register_widget(recipe, {
+    text = function()
+      return ("%s: %s"):format(recipe, alchemy_combos[recipe][localize_alchemy])
+    end,
+    on_click = function()
+      localize_alchemy = not localize_alchemy
+    end,
+    width = math.ceil(maxwidth * 0.75)
+  })
+end
 
 function _cheat_gui_main()
   if gui ~= nil then
