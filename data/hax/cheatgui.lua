@@ -11,15 +11,43 @@ dofile( "data/hax/alchemy.lua")
 dofile( "data/hax/gun_builder.lua")
 dofile( "data/hax/superhackykb.lua")
 
-print("Checking require?")
-print("Require exists HERE?")
-if not require then
-  print("NO require.")
-else
-  print("YES require.")
+local created_gui = false
+
+local _type_target = nil
+local _shift_target = nil
+
+local function handle_typing()
+  local type_target = _type_target
+  local req_shift = false
+  if type_target == nil then 
+    type_target = _shift_target
+    req_shift = true
+  end
+  if not type_target then return end
+  local prev_val = type_target.value
+  local hit_enter = false
+  type_target.value, hit_enter = hack_type(prev_val, not req_shift)
+  if (prev_val ~= type_target.value) and (type_target.on_change) then
+    type_target:on_change()
+  end
+  if hit_enter and (type_target.on_hit_enter) then
+    type_target:on_hit_enter()
+  end
 end
 
-local created_gui = false
+local function set_type_target(target)
+  if _type_target and _type_target.on_lose_focus then
+    _type_target:on_lose_focus()
+  end
+  _type_target = target
+  if _type_target and _type_target.on_gain_focus then
+    _type_target:on_gain_focus()
+  end
+end
+
+local function set_type_default(target)
+  _shift_target = target
+end
 
 if not _cheat_gui then
   print("Creating cheat GUI")
@@ -47,14 +75,23 @@ local function Panel(options)
 end
 
 local panel_stack = {}
+local _active_panel = nil
+
+local function _change_active_panel(panel)
+  if panel == _active_panel then return end
+  set_type_default(nil)
+  set_type_target(nil)
+  _gui_frame_function = panel.func
+end
+
 local function prev_panel()
   if #panel_stack < 2 then
-    _gui_frame_function = closed_panel
+    _change_active_panel(closed_panel)
     panel_stack = {}
   else
     -- pop off last panel
     panel_stack[#panel_stack] = nil
-    _gui_frame_function = panel_stack[#panel_stack].func
+    _change_active_panel(panel_stack[#panel_stack])
   end
 end
 
@@ -63,23 +100,23 @@ local function jump_back_panel(idx)
   for i = idx+1, #panel_stack do
     panel_stack[i] = nil
   end
-  _gui_frame_function = panel_stack[#panel_stack].func
+  _change_active_panel(panel_stack[#panel_stack])
 end
 
 local function enter_panel(panel)
   panel_stack[#panel_stack+1] = panel
-  _gui_frame_function = panel.func
+  _change_active_panel(panel)
 end
 
 local function hide_gui()
-  _gui_frame_function = closed_panel.func
+  _change_active_panel(closed_panel)
 end
 
 local function show_gui()
   if #panel_stack == 0 then
     enter_panel(menu_panel)
   else
-    _gui_frame_function = panel_stack[#panel_stack].func
+    _change_active_panel(panel_stack[#panel_stack])
   end
 end
 
@@ -214,10 +251,14 @@ local function wrap_paginate(title, options, page_size)
     end
   end
   local filtered_set = options
-  local filter_str = ""
+  local filter_thing = {
+    value = "", on_change = function(_self)
+      filtered_set = filter_options(options, _self.value)
+    end
+  }
   return function(force_refilter)
-    local prev_filter = filter_str
-    filter_str = hack_type(filter_str)
+    set_type_default(filter_thing)
+    local filter_str = filter_thing.value
     local filter_text = "[shift+type to filter]"
     if filter_str and (filter_str ~= "") then
       filter_text = filter_str
@@ -228,7 +269,7 @@ local function wrap_paginate(title, options, page_size)
     GuiLayoutEnd( gui )
     GuiLayoutBeginVertical( gui, 31 + 16, 0 )
     if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
-      filter_str = ""
+      filter_thing.value = ""
     end
     GuiLayoutEnd( gui)
 
@@ -248,9 +289,8 @@ local function wrap_paginate(title, options, page_size)
         end
       end
     else
-      if (prev_filter ~= filter_str) or force_refilter then
+      if force_refilter then
         filtered_set = filter_options(options, filter_str)
-        prev_filter = filter_str
       end
       grid_panel(title, filtered_set)
     end
@@ -642,6 +682,7 @@ function _cheat_gui_main()
   end
 
   if _gui_frame_function ~= nil then
+    handle_typing()
     local happy, errstr = pcall(_gui_frame_function)
     if not happy then
       print("Gui error: " .. errstr)
