@@ -565,28 +565,43 @@ local function draw_extra_buttons(startid)
   return startid
 end
 
+local function wrap_localized(f)
+  local prev_localization = false
+  return function()
+    localization_widget(hax_btn_id+20, 31, 3)
+    local localization_changed = (prev_localization ~= localization_val.value)
+    prev_localization = localization_val.value
+    f(localization_changed)
+  end
+end
+
+always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))}
+cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
+perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
+flasks_panel = Panel{"flasks", wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))}
+
+wands_panel = Panel{"wands", function()
+  grid_panel("Select a wand to spawn:", wand_options)
+end}
+
+local main_panels = {
+  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel
+}
+
+local function draw_main_panels(startid)
+  for idx, panel in ipairs(main_panels) do
+    if GuiButton( gui, 0, 0, panel.name, hax_btn_id + idx ) then
+      enter_panel(panel)
+    end
+  end
+  return startid + #main_panels + 1
+end
+
 menu_panel = Panel{"cheatgui", function()
   breadcrumbs(1, 0)
   GuiLayoutBeginVertical( gui, 1, 11 )
-  if GuiButton( gui, 0, 0, "Perks", hax_btn_id ) then
-    enter_panel(perk_panel)
-  end
-  if GuiButton( gui, 0, 0, "Cards", hax_btn_id+1) then
-    enter_panel(cards_panel)
-  end
-  if GuiButton( gui, 0, 0, "Flasks", hax_btn_id+5) then
-    enter_panel(flasks_panel)
-  end
-  if GuiButton( gui, 0, 0, "Wands", hax_btn_id+6) then
-    enter_panel(wands_panel)
-  end
-  if GuiButton( gui, 0, 0, "Wand builder", hax_btn_id+8) then
-    enter_panel(builder_panel)
-  end
-  if GuiButton( gui, 0, 0, "Teleport", hax_btn_id+3) then
-    enter_panel(teleport_panel)
-  end
-  draw_extra_buttons(9)
+  local next_id = draw_main_panels(hax_btn_id)
+  draw_extra_buttons(next_id)
   GuiLayoutEnd( gui)
 end}
 
@@ -618,25 +633,6 @@ register_cheat_button("Spawn Orbs", function()
     EntityLoad(("data/entities/items/orbs/orb_%02d.xml"):format(i), x+(i*15), y - (i*5))
   end
 end)
-
-local function wrap_localized(f)
-  local prev_localization = false
-  return function()
-    localization_widget(hax_btn_id+20, 31, 3)
-    local localization_changed = (prev_localization ~= localization_val.value)
-    prev_localization = localization_val.value
-    f(localization_changed)
-  end
-end
-
-always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))}
-cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
-perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
-flasks_panel = Panel{"flasks", wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))}
-
-wands_panel = Panel{"wands", function()
-  grid_panel("Select a wand to spawn:", wand_options)
-end}
 
 enter_panel(menu_panel)
 
