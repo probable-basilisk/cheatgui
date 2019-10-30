@@ -135,8 +135,11 @@ local function filter_options(options, str)
   return ret
 end
 
+local GUTTER_Y = 345
+local CENTER_X = 1280/4
+
 local function wrap_paginate(title, options, page_size)
-  page_size = page_size or (28*4 - 2)
+  page_size = page_size or 28*4
   local cur_page = 1
   local pages = {}
   local npages = math.ceil(#options / page_size)
@@ -144,20 +147,10 @@ local function wrap_paginate(title, options, page_size)
   for page = 1, npages do
     if not options[opt_pos] then break end
     pages[page] = {}
-    if page > 1 then
-      table.insert(pages[page], {"<- Prev", function()
-        cur_page = page - 1
-      end})
-    end
     for idx = 1, page_size do
       if not options[opt_pos] then break end
       table.insert(pages[page], options[opt_pos])
       opt_pos = opt_pos + 1
-    end
-    if page < npages then
-      table.insert(pages[page], {"More ->", function()
-        cur_page = page + 1
-      end})
     end
   end
   local filtered_set = options
@@ -180,6 +173,19 @@ local function wrap_paginate(title, options, page_size)
 
     if (not filter_str) or (filter_str == "") then
       grid_panel(title, pages[cur_page])
+      if cur_page > 1 then
+        if GuiButton( gui, CENTER_X - 13, GUTTER_Y, "<-", hax_btn_id+12 ) then
+          cur_page = cur_page - 1
+        end
+      end
+      if npages > 1 then
+        GuiText( gui, 1280/4, GUTTER_Y, ("%d/%d"):format(cur_page, npages))
+      end
+      if cur_page < npages then
+        if GuiButton( gui, CENTER_X + 20, GUTTER_Y, "->", hax_btn_id+13 ) then
+          cur_page = cur_page + 1
+        end
+      end
     else
       if (prev_filter ~= filter_str) or force_refilter then
         filtered_set = filter_options(options, filter_str)
