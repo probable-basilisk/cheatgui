@@ -36,10 +36,65 @@ local hax_btn_id = 123
 
 local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel
 
+local panel_stack = {}
+local function prev_panel()
+  if #panel_stack < 2 then
+    _gui_frame_function = closed_panel
+    panel_stack = {}
+  else
+    -- pop off last panel
+    panel_stack[#panel_stack] = nil
+    _gui_frame_function = panel_stack[#panel_stack].panel
+  end
+end
+
+local function jump_back_panel(idx)
+  if #panel_stack <= idx then return end
+  for i = idx+1, #panel_stack do
+    panel_stack[i] = nil
+  end
+  _gui_frame_function = panel_stack[#panel_stack].panel
+end
+
+local function enter_panel(name, panel)
+  panel_stack[#panel_stack+1] = {name = name:lower(), panel = panel}
+  _gui_frame_function = panel
+end
+
+local function hide_gui()
+  _gui_frame_function = closed_panel
+end
+
+local function show_gui()
+  if #panel_stack == 0 then
+    enter_panel("cheatgui", menu_panel)
+  else
+    _gui_frame_function = panel_stack[#panel_stack].panel
+  end
+end
+
+local function breadcrumbs(x, y)
+  GuiLayoutBeginHorizontal(gui, x, y)
+  if GuiButton( gui, 0, 0, "[-]", hax_btn_id+1) then
+    hide_gui()
+  end
+  for idx, panel in ipairs(panel_stack) do
+    if GuiButton( gui, 0, 0, panel.name .. ">", hax_btn_id+1+idx) then
+      jump_back_panel(idx)
+    end
+  end
+  GuiLayoutEnd(gui)
+  GuiLayoutBeginHorizontal( gui, x, y+3)
+  if #panel_stack > 1 and GuiButton( gui, 0, 0, "< back", hax_btn_id+30) then
+    prev_panel()
+  end
+  GuiLayoutEnd( gui )
+end
+
 closed_panel = function()
   GuiLayoutBeginVertical( gui, 1, 0 )
   if GuiButton( gui, 0, 0, "[+]", hax_btn_id ) then
-    _gui_frame_function = menu_panel
+    show_gui()
   end
   GuiLayoutEnd( gui)
 end
@@ -115,12 +170,13 @@ local function grid_layout(options, col_width)
 end
 
 local function grid_panel(title, options, col_width)
-  GuiLayoutBeginVertical( gui, 1, 0 )
-  GuiText( gui, 0,0, title)
-  if GuiButton( gui, 0, 0, "Close", hax_btn_id+10 ) then
-    _gui_frame_function = closed_panel
-  end
-  GuiLayoutEnd( gui)
+  -- GuiLayoutBeginVertical( gui, 1, 0 )
+  -- GuiText( gui, 0,0, title)
+  -- if GuiButton( gui, 0, 0, "Close", hax_btn_id+10 ) then
+  --   _gui_frame_function = closed_panel
+  -- end
+  -- GuiLayoutEnd( gui)
+  breadcrumbs(1, 0)
   grid_layout(options, col_width)
 end
 
@@ -274,7 +330,7 @@ local speed_widget, speed_val = create_numerical("Speed", {0.01, 0.1}, 1.0)
 local always_cast_choice = nil
 
 builder_panel = function()
-  local button_id = hax_btn_id + 1
+  local button_id = hax_btn_id + 30
   --GuiLayoutBeginVertical(gui, 2, 11)
   button_id = shuffle_widget(button_id, 1, 12)
   button_id = mana_widget(button_id, 1, 16)
@@ -287,15 +343,17 @@ builder_panel = function()
   button_id = speed_widget(button_id, 1, 44)
   --GuiLayoutEnd(gui)
 
-  GuiLayoutBeginVertical( gui, 1, 0 )
-  GuiText( gui, 0,0, "Wand builder")
-  if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
-    _gui_frame_function = closed_panel
-  end
-  GuiLayoutEnd( gui)
+  -- GuiLayoutBeginVertical( gui, 1, 0 )
+  -- GuiText( gui, 0,0, "Wand builder")
+  -- if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
+  --   _gui_frame_function = closed_panel
+  -- end
+  -- GuiLayoutEnd( gui)
+  breadcrumbs(1, 0)
 
   if GuiButton( gui, 1*4, 48*3.5, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
-    _gui_frame_function = always_cast_panel
+    --_gui_frame_function = always_cast_panel
+    enter_panel("Always cast", always_cast_panel)
     return
   end
   if GuiButton( gui, 1*4, 48*4, "[Spawn]", button_id+3) then
@@ -324,12 +382,13 @@ teleport_panel = function()
   button_id = xpos_widget(button_id, 1, 12)
   button_id = ypos_widget(button_id, 1, 16)
 
-  GuiLayoutBeginVertical( gui, 1, 0 )
-  GuiText( gui, 0,0, "Teleport")
-  if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
-    _gui_frame_function = closed_panel
-  end
-  GuiLayoutEnd( gui)
+  breadcrumbs(1, 0)
+  -- GuiLayoutBeginVertical( gui, 1, 0 )
+  -- GuiText( gui, 0,0, "Teleport")
+  -- if GuiButton( gui, 0, 0, "Close", hax_btn_id ) then
+  --   _gui_frame_function = closed_panel
+  -- end
+  -- GuiLayoutEnd( gui)
 
   if GuiButton( gui, 1*4, 20*3.5, "[Get current position]", button_id+1) then
     local x, y = get_player_pos()
@@ -363,7 +422,8 @@ end
 
 local function set_always_cast(card)
   always_cast_choice = card.id
-  _gui_frame_function = builder_panel
+  --_gui_frame_function = builder_panel
+  prev_panel()
 end
 
 local spell_options = {}
@@ -372,7 +432,8 @@ local always_cast_options = {
     text = "None", 
     f = function()
       always_cast_choice = nil
-      _gui_frame_function = builder_panel
+      prev_panel()
+      --_gui_frame_function = builder_panel
     end
   }
 }
@@ -511,29 +572,36 @@ local function draw_extra_buttons(startid)
 end
 
 menu_panel = function()
+  breadcrumbs(1, 0)
   GuiLayoutBeginVertical( gui, 1, 11 )
   if GuiButton( gui, 0, 0, "Perks", hax_btn_id ) then
-    _gui_frame_function = perk_panel
+    enter_panel("Perks", perk_panel)
+    --_gui_frame_function = perk_panel
   end
   if GuiButton( gui, 0, 0, "Cards", hax_btn_id+1) then
-    _gui_frame_function = cards_panel
+    enter_panel("Cards", cards_panel)
+    --_gui_frame_function = cards_panel
   end
   if GuiButton( gui, 0, 0, "Flasks", hax_btn_id+5) then
-    _gui_frame_function = flasks_panel
+    enter_panel("Flasks", flasks_panel)
+    --_gui_frame_function = flasks_panel
   end
   if GuiButton( gui, 0, 0, "Wands", hax_btn_id+6) then
-    _gui_frame_function = wands_panel
+    enter_panel("Wands", wands_panel)
+    --_gui_frame_function = wands_panel
   end
   if GuiButton( gui, 0, 0, "Wand builder", hax_btn_id+8) then
-    _gui_frame_function = builder_panel
+    enter_panel("Wand Builder", builder_panel)
+    --_gui_frame_function = builder_panel
   end
   if GuiButton( gui, 0, 0, "Teleport", hax_btn_id+3) then
-    _gui_frame_function = teleport_panel
+    enter_panel("Teleport", teleport_panel)
+    --_gui_frame_function = teleport_panel
   end
   draw_extra_buttons(9)
-  if GuiButton( gui, 0, 0, "Close", hax_btn_id+2) then
-    _gui_frame_function = closed_panel
-  end
+  -- if GuiButton( gui, 0, 0, "Close", hax_btn_id+2) then
+  --   _gui_frame_function = closed_panel
+  -- end
   GuiLayoutEnd( gui)
 end
 
@@ -569,7 +637,7 @@ end)
 local function wrap_localized(f)
   local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+1, 50, 3)
+    localization_widget(hax_btn_id+20, 50, 3)
     local localization_changed = (prev_localization ~= localization_val.value)
     prev_localization = localization_val.value
     f(localization_changed)
@@ -585,7 +653,8 @@ wands_panel = function()
   grid_panel("Select a wand to spawn:", wand_options)
 end
 
-_gui_frame_function = menu_panel
+--_gui_frame_function = menu_panel
+enter_panel("cheatgui", menu_panel)
 
 function _cheat_gui_main()
   if gui ~= nil then
