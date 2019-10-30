@@ -218,14 +218,15 @@ local function wrap_paginate(title, options, page_size)
   return function(force_refilter)
     local prev_filter = filter_str
     filter_str = hack_type(filter_str)
-    local filter_text = " Filter:                               "
+    local filter_text = "[shift+type to filter]"
     if filter_str and (filter_str ~= "") then
-      filter_text = filter_text .. filter_str
-    else
-      filter_text = filter_text .. "[shift+type to filter]"
+      filter_text = filter_str
     end
 
-    GuiLayoutBeginVertical( gui, 31, 0 )
+    GuiLayoutBeginVertical( gui, 31, 0)
+    GuiText(gui, 0, 0, "Filter:")
+    GuiLayoutEnd( gui )
+    GuiLayoutBeginVertical( gui, 31 + 16, 0 )
     if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
       filter_str = ""
     end
@@ -268,7 +269,9 @@ local function create_radio(title, options, default, x_spacing)
   }
   return function(button_id, xpos, ypos)
     button_id = (button_id or 200) + 1  
-    GuiText(gui, xpos*4, (ypos) * 3.5 + 1, title)
+    GuiLayoutBeginHorizontal(gui, xpos, ypos)
+    GuiText(gui, 0, 0, title)
+    GuiLayoutEnd(gui)
     GuiLayoutBeginHorizontal(gui, xpos+(x_spacing or 12), ypos)
     for idx, option in ipairs(options) do
       local text = option[1]
@@ -290,24 +293,25 @@ local function create_numerical(title, increments, default)
   }
   return function(button_id, xpos, ypos)
     button_id = (button_id or 200) + 1
-    GuiText(gui, xpos*4, (ypos) * 3.5 + 1, title)
+    GuiLayoutBeginHorizontal(gui, xpos, ypos)
+      GuiText(gui, 0, 0, title)
+    GuiLayoutEnd(gui)
     GuiLayoutBeginHorizontal(gui, xpos + 12, ypos)
-    --GuiText(gui, 0, 0, title)
-    for idx = #increments, 1, -1 do
-      local s = "[" .. string.rep("-", idx) .. "]"
-      if GuiButton( gui, 0, 0, s, button_id ) then
-        wrapper.value = wrapper.value - increments[idx]
+      for idx = #increments, 1, -1 do
+        local s = "[" .. string.rep("-", idx) .. "]"
+        if GuiButton( gui, 0, 0, s, button_id ) then
+          wrapper.value = wrapper.value - increments[idx]
+        end
+        button_id = button_id + 1
       end
-      button_id = button_id + 1
-    end
-    GuiText(gui, 0, 0, "" .. wrapper.value)
-    for idx = 1, #increments do
-      local s = "[" .. string.rep("+", idx) .. "]"
-      if GuiButton( gui, 0, 0, s, button_id ) then
-        wrapper.value = wrapper.value + increments[idx]
+      GuiText(gui, 0, 0, "" .. wrapper.value)
+      for idx = 1, #increments do
+        local s = "[" .. string.rep("+", idx) .. "]"
+        if GuiButton( gui, 0, 0, s, button_id ) then
+          wrapper.value = wrapper.value + increments[idx]
+        end
+        button_id = button_id + 1
       end
-      button_id = button_id + 1
-    end
     GuiLayoutEnd(gui)
     return button_id
   end, wrapper
@@ -315,7 +319,7 @@ end
 
 local localization_widget, localization_val = create_radio("Show localized names:", {
   {"Yes", true}, {"No", false}
-}, 2, 1)
+}, 2, 16)
 
 
 local shuffle_widget, shuffle_val = create_radio("Shuffle", {
@@ -347,11 +351,11 @@ builder_panel = Panel{"wand builder", function()
 
   breadcrumbs(1, 0)
 
-  if GuiButton( gui, 1*4, 48*3.5, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
+  GuiLayoutBeginVertical(gui, 1, 48)
+  if GuiButton( gui, 0, 0, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
     enter_panel(always_cast_panel)
-    return
   end
-  if GuiButton( gui, 1*4, 48*4, "[Spawn]", button_id+3) then
+  if GuiButton( gui, 0, 2, "[Spawn]", button_id+3) then
     local x, y = get_player_pos()
     local gun = {
       deck_capacity = slots_val.value,
@@ -367,6 +371,7 @@ builder_panel = Panel{"wand builder", function()
     }
     build_gun(x, y, gun)
   end
+  GuiLayoutEnd(gui)
 end}
 
 local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0)
@@ -379,17 +384,19 @@ teleport_panel = Panel{"teleport", function()
 
   breadcrumbs(1, 0)
 
-  if GuiButton( gui, 1*4, 20*3.5, "[Get current position]", button_id+1) then
+  GuiLayoutBeginVertical(gui, 1, 20)
+  if GuiButton( gui, 0, 0, "[Get current position]", button_id+1) then
     local x, y = get_player_pos()
     xpos_val.value, ypos_val.value = math.floor(x), math.floor(y)
   end
-  if GuiButton( gui, 1*4, 24*3.5, "[Zero position]", button_id+2) then
+  if GuiButton( gui, 0, 4, "[Zero position]", button_id+2) then
     xpos_val.value, ypos_val.value = 0, 0
   end
-  if GuiButton( gui, 1*4, 28*3.5, "[Teleport]", button_id+3) then
+  if GuiButton( gui, 0, 8, "[Teleport]", button_id+3) then
     GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
     teleport(xpos_val.value, ypos_val.value)
   end
+  GuiLayoutEnd(gui)
 end}
 
 -- build these button lists once so we aren't rebuilding them every frame
@@ -615,7 +622,7 @@ end)
 local function wrap_localized(f)
   local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+20, 50, 3)
+    localization_widget(hax_btn_id+20, 31, 3)
     local localization_changed = (prev_localization ~= localization_val.value)
     prev_localization = localization_val.value
     f(localization_changed)
