@@ -216,10 +216,10 @@ local function set_health(hp)
   end
 end
 
-local function spawn_potion(material)
+local function spawn_potion(material, quantity)
   local x, y = get_player_pos()
   local entity = EntityLoad("data/hax/potion_empty.xml", x, y)
-  AddMaterialInventoryMaterial( entity, material, 1000 )
+  AddMaterialInventoryMaterial( entity, material, quantity or 1000 )
 end
 
 local function spawn_item(path)
@@ -392,7 +392,8 @@ end
 local num_types = {
   float = {function(x) return x end, "%0.2f", 1.0},
   int = {function(x) return round(x) end, "%d", 1.0},
-  frame = {function(x) return round(x) end, "%0.2f", 1.0/60.0}
+  frame = {function(x) return round(x) end, "%0.2f", 1.0/60.0},
+  mills = {function(x) return round(x) end, "%0.2f", 1.0/1000.0}
 }
 
 local function create_numerical(title, increments, default, kind)
@@ -632,9 +633,11 @@ for idx, perk in ipairs(perk_list) do
   }
 end
 
+local quantity_widget, quantity_val = create_numerical("Quantity mult:", {100, 1000}, 1000, 'mills')
+
 local function spawn_potion_button(potion)
   GamePrint( "Attempting to spawn potion of " .. potion.id)
-  spawn_potion(potion.id)
+  spawn_potion(potion.id, quantity_val.value)
 end
 
 local potion_options = {}
@@ -743,10 +746,16 @@ local function wrap_localized(f)
   end
 end
 
+local _flask_base = wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))
+local function flask_panel_func()
+  quantity_widget(hax_btn_id+15, 61, 3)
+  _flask_base()
+end
+
 always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))}
 cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
 perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
-flasks_panel = Panel{"flasks", wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))}
+flasks_panel = Panel{"flasks", flask_panel_func}
 
 wands_panel = Panel{"wands", function()
   grid_panel("Select a wand to spawn:", wand_options)
