@@ -280,9 +280,6 @@ local function filter_options(options, str)
   return ret
 end
 
-local GUTTER_Y = 345
-local CENTER_X = 1280/4
-
 local function wrap_paginate(title, options, page_size)
   page_size = page_size or 28*4
   local cur_page = 1
@@ -324,17 +321,23 @@ local function wrap_paginate(title, options, page_size)
     if (not filter_str) or (filter_str == "") then
       grid_panel(title, pages[cur_page])
       if cur_page > 1 then
-        if GuiButton( gui, CENTER_X - 13, GUTTER_Y, "<-", hax_btn_id+12 ) then
+        GuiLayoutBeginHorizontal(gui, 46, 96)
+        if GuiButton( gui, 0, 0, "<-", hax_btn_id+12 ) then
           cur_page = cur_page - 1
         end
+        GuiLayoutEnd(gui)
       end
       if npages > 1 then
-        GuiText( gui, 1280/4, GUTTER_Y, ("%d/%d"):format(cur_page, npages))
+        GuiLayoutBeginHorizontal(gui, 48, 96)
+        GuiText( gui, 0, 0, ("%d/%d"):format(cur_page, npages))
+        GuiLayoutEnd(gui)
       end
       if cur_page < npages then
-        if GuiButton( gui, CENTER_X + 20, GUTTER_Y, "->", hax_btn_id+13 ) then
+        GuiLayoutBeginHorizontal(gui, 51, 96)
+        if GuiButton( gui, 0, 0, "->", hax_btn_id+13 ) then
           cur_page = cur_page + 1
         end
+        GuiLayoutEnd(gui)
       end
     else
       if force_refilter then
@@ -752,6 +755,17 @@ local function flask_panel_func()
   _flask_base()
 end
 
+local gui_grid_ref_panel = Panel{"gui grid ref.", function()
+  breadcrumbs(1, 0)
+  for row = 0, 100, 10 do
+    for col = 0, 100, 10 do
+      GuiLayoutBeginHorizontal(gui, col, row)
+      GuiText(gui, 0, 0, ("(%d,%d)"):format(col, row))
+      GuiLayoutEnd(gui)
+    end
+  end
+end}
+
 always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))}
 cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
 perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
@@ -783,7 +797,7 @@ info_panel = Panel{"widgets", function()
 end}
 
 local main_panels = {
-  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel, info_panel
+  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel, info_panel, gui_grid_ref_panel
 }
 
 local function draw_main_panels(startid)
