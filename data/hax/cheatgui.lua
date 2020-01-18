@@ -62,7 +62,9 @@ local gui = _cheat_gui
 
 local hax_btn_id = 123
 
-local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel, wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
+local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel
+local wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
+local health_panel
 
 local function Panel(options)
   if not options.name then
@@ -206,14 +208,24 @@ local function teleport(x, y)
   EntitySetTransform(get_player(), x, y)
 end
 
-local function set_health(hp)
+local function get_health()
+  local dm = EntityGetComponent( get_player(), "DamageModelComponent" )[1]
+  return ComponentGetValue(dm, "hp"), ComponentGetValue(dm, "max_hp")
+end
+
+local function set_health(cur_hp, max_hp)
   local damagemodels = EntityGetComponent( get_player(), "DamageModelComponent" )
   if( damagemodels ~= nil ) then
     for i,damagemodel in ipairs(damagemodels) do
-      ComponentSetValue( damagemodel, "max_hp", hp)
-      ComponentSetValue( damagemodel, "hp", hp)
+      ComponentSetValue( damagemodel, "max_hp", max_hp)
+      ComponentSetValue( damagemodel, "hp", cur_hp)
     end
   end
+end
+
+local function quick_heal()
+  local _, max_hp = get_health()
+  set_health(max_hp, max_hp)
 end
 
 local function spawn_potion(material, quantity)
@@ -396,7 +408,8 @@ local num_types = {
   float = {function(x) return x end, "%0.2f", 1.0},
   int = {function(x) return round(x) end, "%d", 1.0},
   frame = {function(x) return round(x) end, "%0.2f", 1.0/60.0},
-  mills = {function(x) return round(x) end, "%0.2f", 1.0/1000.0}
+  mills = {function(x) return round(x) end, "%0.2f", 1.0/1000.0},
+  hearts = {function(x) return x end, "%d", 25.0}
 }
 
 local function create_numerical(title, increments, default, kind)
@@ -567,6 +580,26 @@ teleport_panel = Panel{"teleport", function()
   if GuiButton( gui, 0, 8, "[Teleport]", button_id+3) then
     GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
     teleport(xpos_val.value, ypos_val.value)
+  end
+  GuiLayoutEnd(gui)
+end}
+
+local cur_hp_widget, cur_hp_val = create_numerical("HP", {1, 4}, 4, 'hearts')
+local max_hp_widget, max_hp_val = create_numerical("Max HP", {1, 4}, 4, 'hearts')
+
+health_panel = Panel{"health", function()
+  local button_id = hax_btn_id + 20
+  button_id = cur_hp_widget(button_id, 1, 12)
+  button_id = max_hp_widget(button_id, 1, 16)
+
+  breadcrumbs(1, 0)
+
+  GuiLayoutBeginVertical(gui, 1, 20)
+  if GuiButton( gui, 0, 0, "[Get current health]", button_id+1) then
+    cur_hp_val.value, max_hp_val.value = get_health()
+  end
+  if GuiButton( gui, 0, 8, "[Apply health changes]", button_id+3) then
+    set_health(cur_hp_val.value, max_hp_val.value)
   end
   GuiLayoutEnd(gui)
 end}
@@ -797,12 +830,14 @@ info_panel = Panel{"widgets", function()
 end}
 
 local main_panels = {
-  perk_panel, cards_panel, flasks_panel, wands_panel, builder_panel, teleport_panel, info_panel, gui_grid_ref_panel
+  perk_panel, cards_panel, flasks_panel, wands_panel, 
+  builder_panel, health_panel,
+  teleport_panel, info_panel, gui_grid_ref_panel
 }
 
 local function draw_main_panels(startid)
   for idx, panel in ipairs(main_panels) do
-    if GuiButton( gui, 0, 0, panel.name, startid + idx ) then
+    if GuiButton( gui, 0, 0, panel.name .. "->", startid + idx ) then
       enter_panel(panel)
     end
   end
@@ -817,17 +852,17 @@ menu_panel = Panel{"cheatgui", function()
   GuiLayoutEnd( gui)
 end}
 
-register_cheat_button("Spell Refresh", function()
+register_cheat_button("[spell refresh]", function()
   GameRegenItemActionsInPlayer( get_player() )
 end)
 
-register_cheat_button("Much Health", function() set_health(40) end)
+register_cheat_button("[full heal]", function() quick_heal() end)
 
 register_cheat_button(function()
-  return ((tourist_mode_on and "Disable") or "Enable") .. " tourist mode"
+  return "[" .. ((tourist_mode_on and "disable") or "enable") .. " tourist mode]"
 end, toggle_tourist_mode)
 
-register_cheat_button("Spawn Orbs", function()
+register_cheat_button("[spawn orbs]", function()
   local x, y = get_player_pos()
   for i = 0, 13 do
     EntityLoad(("data/entities/items/orbs/orb_%02d.xml"):format(i), x+(i*15), y - (i*5))
@@ -899,7 +934,10 @@ function _cheat_gui_main()
     local happy, errstr = pcall(_gui_frame_function)
     if not happy then
       print("Gui error: " .. errstr)
-      _gui_frame_function = nil
+      GamePrint("cheatgui err: " .. errstr)
+      hide_gui()
     end
   end
 end
+
+hide_gui()
