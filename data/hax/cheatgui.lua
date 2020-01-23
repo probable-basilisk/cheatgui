@@ -251,6 +251,10 @@ local function maybe_call(s_or_f, opt)
   end
 end
 
+local function get_option_text(opt)
+  return maybe_call(opt.text or opt[1], opt)
+end
+
 local function grid_layout(options, col_width)
   local num_options = #options
   local col_size = 28
@@ -264,8 +268,7 @@ local function grid_layout(options, col_width)
     for row = 1, col_size do
       if not options[opt_pos] then break end
       local opt = options[opt_pos]
-      local text = opt.text or opt[1]
-      text = maybe_call(text, opt)
+      local text = get_option_text(opt)
       if GuiButton( gui, 0, 0, text, hax_btn_id+opt_pos+40 ) then
         (opt.f or opt[2])(opt)
       end
@@ -290,74 +293,6 @@ local function filter_options(options, str)
     end
   end
   return ret
-end
-
-local function wrap_paginate(title, options, page_size)
-  page_size = page_size or 28*4
-  local cur_page = 1
-  local pages = {}
-  local npages = math.ceil(#options / page_size)
-  local opt_pos = 1
-  for page = 1, npages do
-    if not options[opt_pos] then break end
-    pages[page] = {}
-    for idx = 1, page_size do
-      if not options[opt_pos] then break end
-      table.insert(pages[page], options[opt_pos])
-      opt_pos = opt_pos + 1
-    end
-  end
-  local filtered_set = options
-  local filter_thing = {
-    value = "", on_change = function(_self)
-      filtered_set = filter_options(options, _self.value)
-    end
-  }
-  return function(force_refilter)
-    set_type_default(filter_thing)
-    local filter_str = filter_thing.value
-    local filter_text = "[shift+type to filter]"
-    if filter_str and (filter_str ~= "") then
-      filter_text = filter_str
-    end
-
-    GuiLayoutBeginVertical( gui, 31, 0)
-    GuiText(gui, 0, 0, "Filter:")
-    GuiLayoutEnd( gui )
-    GuiLayoutBeginVertical( gui, 31 + 16, 0 )
-    if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
-      filter_thing.value = ""
-    end
-    GuiLayoutEnd( gui)
-
-    if (not filter_str) or (filter_str == "") then
-      grid_panel(title, pages[cur_page])
-      if cur_page > 1 then
-        GuiLayoutBeginHorizontal(gui, 46, 96)
-        if GuiButton( gui, 0, 0, "<-", hax_btn_id+12 ) then
-          cur_page = cur_page - 1
-        end
-        GuiLayoutEnd(gui)
-      end
-      if npages > 1 then
-        GuiLayoutBeginHorizontal(gui, 48, 96)
-        GuiText( gui, 0, 0, ("%d/%d"):format(cur_page, npages))
-        GuiLayoutEnd(gui)
-      end
-      if cur_page < npages then
-        GuiLayoutBeginHorizontal(gui, 51, 96)
-        if GuiButton( gui, 0, 0, "->", hax_btn_id+13 ) then
-          cur_page = cur_page + 1
-        end
-        GuiLayoutEnd(gui)
-      end
-    else
-      if force_refilter then
-        filtered_set = filter_options(options, filter_str)
-      end
-      grid_panel(title, filtered_set)
-    end
-  end
 end
 
 local function create_radio(title, options, default, x_spacing)
@@ -392,6 +327,113 @@ local function create_radio(title, options, default, x_spacing)
     GuiLayoutEnd(gui)
     return button_id
   end, wrapper
+end
+
+local function alphabetize(options, do_it)
+  if not do_it then return options end
+  local keys = {}
+  for idx, opt in ipairs(options) do
+    keys[idx] = {get_option_text(opt):lower(), opt}
+  end
+  table.sort(keys, function(a, b) return a[1] < b[1] end)
+  local sorted = {}
+  for idx, v in ipairs(keys) do
+    sorted[idx] = v[2]
+  end
+  return sorted
+end
+
+local alphabetize_widget, alphabetize_val = create_radio("Alphabetize:", {
+  {"Yes", true}, {"No", false}
+}, 2, 16)
+
+local function breakup_pages(options, page_size)
+  local pages = {}
+  local npages = math.ceil(#options / page_size)
+  local opt_pos = 1
+  for page = 1, npages do
+    if not options[opt_pos] then break end
+    pages[page] = {}
+    for idx = 1, page_size do
+      if not options[opt_pos] then break end
+      table.insert(pages[page], options[opt_pos])
+      opt_pos = opt_pos + 1
+    end
+  end
+  return pages
+end
+
+local function wrap_paginate(title, options, page_size)
+  page_size = page_size or 28*4
+  local cur_page = 1
+  local pages = breakup_pages(options, page_size)
+
+  local prev_alphabetize = false
+  local filtered_set = options
+  local filter_thing = {
+    value = "", on_change = function(_self)
+      filtered_set = alphabetize(
+        filter_options(options, _self.value), 
+        alphabetize_val.value
+      )
+    end
+  }
+  return function(force_refilter)
+    if force_refilter or (prev_alphabetize ~= alphabetize_val.value) then
+      force_refilter = true
+      pages = breakup_pages(
+        alphabetize(options, alphabetize_val.value), page_size
+      )
+    end
+    prev_alphabetize = alphabetize_val.value
+    set_type_default(filter_thing)
+    local filter_str = filter_thing.value
+    local filter_text = "[shift+type to filter]"
+    if filter_str and (filter_str ~= "") then
+      filter_text = filter_str
+    end
+
+    GuiLayoutBeginVertical( gui, 31, 0)
+    GuiText(gui, 0, 0, "Filter:")
+    GuiLayoutEnd( gui )
+    GuiLayoutBeginVertical( gui, 31 + 16, 0 )
+    if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
+      filter_thing.value = ""
+    end
+    GuiLayoutEnd( gui)
+    alphabetize_widget(hax_btn_id+24, 66, 0)
+
+    if (not filter_str) or (filter_str == "") then
+      grid_panel(title, pages[cur_page])
+      if cur_page > 1 then
+        GuiLayoutBeginHorizontal(gui, 46, 96)
+        if GuiButton( gui, 0, 0, "<-", hax_btn_id+12 ) then
+          cur_page = cur_page - 1
+        end
+        GuiLayoutEnd(gui)
+      end
+      if #pages > 1 then
+        GuiLayoutBeginHorizontal(gui, 48, 96)
+        GuiText( gui, 0, 0, ("%d/%d"):format(cur_page, #pages))
+        GuiLayoutEnd(gui)
+      end
+      if cur_page < #pages then
+        GuiLayoutBeginHorizontal(gui, 51, 96)
+        if GuiButton( gui, 0, 0, "->", hax_btn_id+13 ) then
+          cur_page = cur_page + 1
+        end
+        GuiLayoutEnd(gui)
+      end
+    else
+      if force_refilter then
+        filtered_set = alphabetize(
+          filter_options(options, filter_str), 
+          alphabetize_val.value
+        )
+      end
+      grid_panel(title, filtered_set)
+    end
+  end
 end
 
 local function round(v)
@@ -494,7 +536,6 @@ end
 local localization_widget, localization_val = create_radio("Show localized names:", {
   {"Yes", true}, {"No", false}
 }, 2, 16)
-
 
 local shuffle_widget, shuffle_val = create_radio("Shuffle", {
   {"Yes", true}, {"No", false}
@@ -653,10 +694,17 @@ for idx, card in ipairs(actions) do
   }
 end
 
-local function spawn_perk_button(perk)
+local function spawn_perk(perk_id, auto_pickup_entity)
   local x, y = get_player_pos()
+  local perk_entity = perk_spawn( x, y - 8, perk_id )
+  if auto_pickup_entity then
+    perk_pickup(perk_entity, auto_pickup_entity, nil, true, false)
+  end
+end
+
+local function spawn_perk_button(perk)
   GamePrint( "Attempting to spawn " .. perk.id)
-  perk_spawn( x, y - 8, perk.id )
+  spawn_perk(perk.id, get_player())
 end
 
 local perk_options = {}
@@ -702,7 +750,7 @@ table.insert(wand_options, {"Haxx", wrap_spawn("data/hax/wand_hax.xml")})
 local tourist_mode_on = false
 local function toggle_tourist_mode()
   tourist_mode_on = not tourist_mode_on
-  local herd = (tourist_mode_on and "healer_orc") or "player"
+  local herd = (tourist_mode_on and "healer") or "player"
   GenomeSetHerdId( get_player(), herd )
   GamePrint("Tourist mode: " .. tostring(tourist_mode_on))
 end
@@ -851,6 +899,10 @@ menu_panel = Panel{"cheatgui", function()
   draw_extra_buttons(next_id)
   GuiLayoutEnd( gui)
 end}
+
+register_cheat_button("[edit wands everywhere]", function()
+  spawn_perk("EDIT_WANDS_EVERYWHERE", get_player())
+end)
 
 register_cheat_button("[spell refresh]", function()
   GameRegenItemActionsInPlayer( get_player() )
