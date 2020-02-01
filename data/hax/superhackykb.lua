@@ -21,6 +21,8 @@ if not ffi then
   return
 end
 
+_keyboard_present = true
+
 ffi.cdef([[
   const uint8_t* SDL_GetKeyboardState(int* numkeys);
   uint32_t SDL_GetKeyFromScancode(uint32_t scancode);

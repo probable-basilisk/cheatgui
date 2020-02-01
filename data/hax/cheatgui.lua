@@ -11,6 +11,10 @@ dofile( "data/hax/alchemy.lua")
 dofile( "data/hax/gun_builder.lua")
 dofile( "data/hax/superhackykb.lua")
 
+local CHEATGUI_VERSION = "1.0"
+local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
+if not _keyboard_present then CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" end
+
 local created_gui = false
 
 local _type_target = nil
@@ -36,6 +40,7 @@ local function handle_typing()
 end
 
 local function set_type_target(target)
+  if not _keyboard_present then return end
   if _type_target and _type_target.on_lose_focus then
     _type_target:on_lose_focus()
   end
@@ -393,15 +398,17 @@ local function wrap_paginate(title, options, page_size)
       filter_text = filter_str
     end
 
-    GuiLayoutBeginVertical( gui, 31, 0)
-    GuiText(gui, 0, 0, "Filter:")
-    GuiLayoutEnd( gui )
-    GuiLayoutBeginVertical( gui, 31 + 16, 0 )
-    if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
-      filter_thing.value = ""
+    if _keyboard_present then
+      GuiLayoutBeginVertical( gui, 61, 0)
+      GuiText(gui, 0, 0, "Filter:")
+      GuiLayoutEnd( gui )
+      GuiLayoutBeginVertical( gui, 61 + 11, 0 )
+      if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
+        filter_thing.value = ""
+      end
+      GuiLayoutEnd( gui)
     end
-    GuiLayoutEnd( gui)
-    alphabetize_widget(hax_btn_id+24, 66, 0)
+    alphabetize_widget(hax_btn_id+24, 31, 0)
 
     if (not filter_str) or (filter_str == "") then
       grid_panel(title, pages[cur_page])
@@ -892,7 +899,7 @@ local function draw_main_panels(startid)
   return startid + #main_panels + 1
 end
 
-menu_panel = Panel{"cheatgui", function()
+menu_panel = Panel{CHEATGUI_TITLE, function()
   breadcrumbs(1, 0)
   GuiLayoutBeginVertical( gui, 1, 11 )
   local next_id = draw_main_panels(hax_btn_id+4)
