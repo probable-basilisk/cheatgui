@@ -13,7 +13,7 @@ but it's not guaranteed.
 
 ### Download manually
 
-[Download this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/master.zip), 
+[Download this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/v1.0.zip), 
 and extract into your `Noita/mods/` directory (so this README should end up in `Noita/mods/cheatgui/README.md`).
 
 ### (or) Clone the Git repo
