@@ -1,6 +1,6 @@
 <Mod
 	name="Cheatgui"
-	description="Basic cheat menu"
+	description="cheat/dev menu"
 	request_no_api_restrictions="1"
 >
 </Mod>
