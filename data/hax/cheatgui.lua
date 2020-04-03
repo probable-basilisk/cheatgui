@@ -13,6 +13,17 @@ if not _keyboard_present then CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" end
 
 local created_gui = false
 
+local _next_available_id = 100
+local function reset_id()
+  _next_available_id = 100
+end
+local function next_id(n)
+  n = n or 1
+  local ret = _next_available_id
+  _next_available_id = _next_available_id + n
+  return ret
+end
+
 local _type_target = nil
 local _shift_target = nil
 
@@ -60,8 +71,6 @@ else
 end
 
 local gui = _cheat_gui
-
-local hax_btn_id = 123
 
 local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel
 local wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
@@ -131,17 +140,17 @@ end
 
 local function breadcrumbs(x, y)
   GuiLayoutBeginHorizontal(gui, x, y)
-  if GuiButton( gui, 0, 0, "[-]", hax_btn_id+1) then
+  if GuiButton( gui, 0, 0, "[-]", next_id()) then
     hide_gui()
   end
   for idx, panel in ipairs(panel_stack) do
-    if GuiButton( gui, 0, 0, panel.name .. ">", hax_btn_id+1+idx) then
+    if GuiButton( gui, 0, 0, panel.name .. ">", next_id()) then
       jump_back_panel(idx)
     end
   end
   GuiLayoutEnd(gui)
   GuiLayoutBeginHorizontal( gui, x, y+3)
-  if #panel_stack > 1 and GuiButton( gui, 0, 0, "< back", hax_btn_id+30) then
+  if #panel_stack > 1 and GuiButton( gui, 0, 0, "< back", next_id()) then
     prev_panel()
   end
   GuiLayoutEnd( gui )
@@ -177,7 +186,7 @@ end
 
 closed_panel = Panel{"[+]", function()
   GuiLayoutBeginHorizontal( gui, 1, 0 )
-  if GuiButton( gui, 0, 0, "[+]", hax_btn_id ) then
+  if GuiButton( gui, 0, 0, "[+]", next_id() ) then
     show_gui()
   end
   GuiLayoutEnd( gui )
@@ -187,7 +196,7 @@ closed_panel = Panel{"[+]", function()
     GuiLayoutBeginHorizontal(gui, col_pos, 0)
     local text = widget:text()
     if idx > 1 then text = "| " .. text end
-    if GuiButton( gui, 0, 0, text, hax_btn_id + idx + 1) then
+    if GuiButton( gui, 0, 0, text, next_id() ) then
       widget:on_click()
     end
     GuiLayoutEnd( gui )
@@ -270,7 +279,7 @@ local function grid_layout(options, col_width)
       if not options[opt_pos] then break end
       local opt = options[opt_pos]
       local text = get_option_text(opt)
-      if GuiButton( gui, 0, 0, text, hax_btn_id+opt_pos+40 ) then
+      if GuiButton( gui, 0, 0, text, next_id() ) then
         (opt.f or opt[2])(opt)
       end
       opt_pos = opt_pos + 1
@@ -310,8 +319,7 @@ local function create_radio(title, options, default, x_spacing)
       _self.value = options[default][2]
     end
   }
-  return function(button_id, xpos, ypos)
-    button_id = (button_id or 200) + 1  
+  return function(xpos, ypos)
     GuiLayoutBeginHorizontal(gui, xpos, ypos)
     GuiText(gui, 0, 0, title)
     GuiLayoutEnd(gui)
@@ -319,14 +327,12 @@ local function create_radio(title, options, default, x_spacing)
     for idx, option in ipairs(options) do
       local text = option[1]
       if idx == wrapper.index then text = "[" .. text .. "]" end
-      if GuiButton( gui, 0, 0, text, button_id ) then
+      if GuiButton( gui, 0, 0, text, next_id() ) then
         wrapper.index = idx
         wrapper.value = option[2]
       end
-      button_id = button_id + 1
     end
     GuiLayoutEnd(gui)
-    return button_id
   end, wrapper
 end
 
@@ -399,18 +405,18 @@ local function wrap_paginate(title, options, page_size)
       GuiText(gui, 0, 0, "Filter:")
       GuiLayoutEnd( gui )
       GuiLayoutBeginVertical( gui, 61 + 11, 0 )
-      if GuiButton( gui, 0, 0, filter_text, hax_btn_id+11 ) then
+      if GuiButton( gui, 0, 0, filter_text, next_id() ) then
         filter_thing.value = ""
       end
       GuiLayoutEnd( gui)
     end
-    alphabetize_widget(hax_btn_id+24, 31, 0)
+    alphabetize_widget(31, 0)
 
     if (not filter_str) or (filter_str == "") then
       grid_panel(title, pages[cur_page])
       if cur_page > 1 then
         GuiLayoutBeginHorizontal(gui, 46, 96)
-        if GuiButton( gui, 0, 0, "<-", hax_btn_id+12 ) then
+        if GuiButton( gui, 0, 0, "<-", next_id() ) then
           cur_page = cur_page - 1
         end
         GuiLayoutEnd(gui)
@@ -422,7 +428,7 @@ local function wrap_paginate(title, options, page_size)
       end
       if cur_page < #pages then
         GuiLayoutBeginHorizontal(gui, 51, 96)
-        if GuiButton( gui, 0, 0, "->", hax_btn_id+13 ) then
+        if GuiButton( gui, 0, 0, "->", next_id() ) then
           cur_page = cur_page + 1
         end
         GuiLayoutEnd(gui)
@@ -503,36 +509,31 @@ local function create_numerical(title, increments, default, kind)
 
   text_wrapper.numeric = wrapper
 
-  return function(button_id, xpos, ypos)
-    button_id = (button_id or 200) + 1
+  return function(xpos, ypos)
     GuiLayoutBeginHorizontal(gui, xpos, ypos)
       GuiText(gui, 0, 0, title)
     GuiLayoutEnd(gui)
     GuiLayoutBeginHorizontal(gui, xpos + 12, ypos)
       for idx = #increments, 1, -1 do
         local s = "[" .. string.rep("-", idx) .. "]"
-        if GuiButton( gui, 0, 0, s, button_id ) then
+        if GuiButton( gui, 0, 0, s, next_id() ) then
           wrapper.value = wrapper.value - increments[idx]
         end
-        button_id = button_id + 1
       end
-      if GuiButton(gui, 0, 0, "" .. (text_wrapper:display_val() or wrapper:display_val()), button_id) then
+      if GuiButton(gui, 0, 0, "" .. (text_wrapper:display_val() or wrapper:display_val()), next_id() ) then
         if text_wrapper.has_focus then
           set_type_target(nil)
         else
           set_type_target(text_wrapper)
         end
       end
-      button_id = button_id + 1
       for idx = 1, #increments do
         local s = "[" .. string.rep("+", idx) .. "]"
-        if GuiButton( gui, 0, 0, s, button_id ) then
+        if GuiButton( gui, 0, 0, s, next_id() ) then
           wrapper.value = wrapper.value + increments[idx]
         end
-        button_id = button_id + 1
       end
     GuiLayoutEnd(gui)
-    return button_id
   end, wrapper
 end
 
@@ -570,21 +571,20 @@ local builder_widgets = {
 builder_panel = Panel{"wand builder", function()
   breadcrumbs(1, 0)
 
-  local button_id = hax_btn_id + 30
   for idx, widget in ipairs(builder_widgets) do
-    button_id = widget[1](button_id, 1, 8 + idx*4)
+    widget[1](1, 8 + idx*4)
   end
 
   GuiLayoutBeginVertical(gui, 1, 48)
-  if GuiButton( gui, 0, 0, "Always cast: " .. (always_cast_choice or "None"), button_id+1) then
+  if GuiButton( gui, 0, 0, "Always cast: " .. (always_cast_choice or "None"), next_id() ) then
     enter_panel(always_cast_panel)
   end
-  if GuiButton( gui, 0, 0, "[Reset all]", button_id+2) then
+  if GuiButton( gui, 0, 0, "[Reset all]", next_id() ) then
     for _, widget in ipairs(builder_widgets) do
       widget[2]:reset()
     end
   end
-  if GuiButton( gui, 0, 4, "[Spawn]", button_id+3) then
+  if GuiButton( gui, 0, 4, "[Spawn]", next_id() ) then
     local x, y = get_player_pos()
     local gun = {
       deck_capacity = slots_val.value,
@@ -607,21 +607,20 @@ local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0, 'int'
 local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0, 'int')
 
 teleport_panel = Panel{"teleport", function()
-  local button_id = hax_btn_id + 20
-  button_id = xpos_widget(button_id, 1, 12)
-  button_id = ypos_widget(button_id, 1, 16)
+  xpos_widget(1, 12)
+  ypos_widget(1, 16)
 
   breadcrumbs(1, 0)
 
   GuiLayoutBeginVertical(gui, 1, 20)
-  if GuiButton( gui, 0, 0, "[Get current position]", button_id+1) then
+  if GuiButton( gui, 0, 0, "[Get current position]", next_id() ) then
     local x, y = get_player_pos()
     xpos_val.value, ypos_val.value = math.floor(x), math.floor(y)
   end
-  if GuiButton( gui, 0, 4, "[Zero position]", button_id+2) then
+  if GuiButton( gui, 0, 4, "[Zero position]", next_id() ) then
     xpos_val.value, ypos_val.value = 0, 0
   end
-  if GuiButton( gui, 0, 8, "[Teleport]", button_id+3) then
+  if GuiButton( gui, 0, 8, "[Teleport]", next_id() ) then
     GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
     teleport(xpos_val.value, ypos_val.value)
   end
@@ -632,17 +631,16 @@ local cur_hp_widget, cur_hp_val = create_numerical("HP", {1, 4}, 4, 'hearts')
 local max_hp_widget, max_hp_val = create_numerical("Max HP", {1, 4}, 4, 'hearts')
 
 health_panel = Panel{"health", function()
-  local button_id = hax_btn_id + 20
-  button_id = cur_hp_widget(button_id, 1, 12)
-  button_id = max_hp_widget(button_id, 1, 16)
+  cur_hp_widget(1, 12)
+  max_hp_widget(1, 16)
 
   breadcrumbs(1, 0)
 
   GuiLayoutBeginVertical(gui, 1, 20)
-  if GuiButton( gui, 0, 0, "[Get current health]", button_id+1) then
+  if GuiButton( gui, 0, 0, "[Get current health]", next_id() ) then
     cur_hp_val.value, max_hp_val.value = get_health()
   end
-  if GuiButton( gui, 0, 8, "[Apply health changes]", button_id+3) then
+  if GuiButton( gui, 0, 8, "[Apply health changes]", next_id() ) then
     set_health(cur_hp_val.value, max_hp_val.value)
   end
   GuiLayoutEnd(gui)
@@ -807,26 +805,24 @@ function register_cheat_button(title, f)
   table.insert(extra_buttons, {title, f})
 end
 
-local function draw_extra_buttons(startid)
+local function draw_extra_buttons()
   for _, button in ipairs(extra_buttons) do
     local title, f = button[1], button[2]
     if type(title) == 'function' then title = title() end
     if f then
-      if GuiButton( gui, 0, 0, title, startid) then
+      if GuiButton( gui, 0, 0, title, next_id() ) then
         f()
       end
-      startid = startid + 1
     else
       GuiText( gui, 0, 0, title)
     end
   end
-  return startid
 end
 
 local function wrap_localized(f)
   local prev_localization = false
   return function()
-    localization_widget(hax_btn_id+20, 31, 3)
+    localization_widget(31, 3)
     local localization_changed = (prev_localization ~= localization_val.value)
     prev_localization = localization_val.value
     f(localization_changed)
@@ -835,7 +831,7 @@ end
 
 local _flask_base = wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))
 local function flask_panel_func()
-  quantity_widget(hax_btn_id+15, 61, 3)
+  quantity_widget(61, 3)
   _flask_base()
 end
 
@@ -867,11 +863,11 @@ info_panel = Panel{"widgets", function()
     local enabled = _info_widgets[wname] ~= nil
     local text = w:text()
     if enabled then
-      if GuiButton(gui, 0, 0, "[*] " .. text, hax_btn_id + 10 + idx) then
+      if GuiButton(gui, 0, 0, "[*] " .. text, next_id() ) then
         remove_info_widget(wname)
       end
     else
-      if GuiButton(gui, 0, 0, "[ ] " .. text, hax_btn_id + 10 + idx) then
+      if GuiButton(gui, 0, 0, "[ ] " .. text, next_id() ) then
         GamePrint("Adding " .. wname .. " to info bar (minimize cheatgui to see)")
         add_info_widget(wname, w)
       end
@@ -886,21 +882,20 @@ local main_panels = {
   teleport_panel, info_panel, gui_grid_ref_panel
 }
 
-local function draw_main_panels(startid)
+local function draw_main_panels()
   for idx, panel in ipairs(main_panels) do
-    if GuiButton( gui, 0, 0, panel.name .. "->", startid + idx ) then
+    if GuiButton( gui, 0, 0, panel.name .. "->", next_id() ) then
       enter_panel(panel)
     end
   end
-  return startid + #main_panels + 1
 end
 
 menu_panel = Panel{CHEATGUI_TITLE, function()
   breadcrumbs(1, 0)
   GuiLayoutBeginVertical( gui, 1, 11 )
-  local next_id = draw_main_panels(hax_btn_id+4)
-  draw_extra_buttons(next_id)
-  GuiLayoutEnd( gui)
+  draw_main_panels()
+  draw_extra_buttons()
+  GuiLayoutEnd(gui)
 end}
 
 register_cheat_button("[edit wands everywhere]", function()
@@ -985,6 +980,7 @@ function _cheat_gui_main()
   end
 
   if _gui_frame_function ~= nil then
+    reset_id()
     handle_typing()
     local happy, errstr = pcall(_gui_frame_function)
     if not happy then
