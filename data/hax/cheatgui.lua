@@ -606,6 +606,48 @@ end}
 local xpos_widget, xpos_val = create_numerical("X", {100, 1000, 10000}, 0, 'int')
 local ypos_widget, ypos_val = create_numerical("Y", {100, 1000, 10000}, 0, 'int')
 
+local SPECIAL_LOCATIONS = {
+  ["$biome_lava"] = {x=2300}
+}
+
+local quick_teleports = nil
+local function find_quick_teleports()
+  if quick_teleports then return quick_teleports end
+  quick_teleports = {}
+  local temp_mountains = {}
+  local prev_biome = "?"
+  for y = 0, 15000, 500 do
+    local cur_biome = BiomeMapGetName(0, y)
+    if cur_biome == "$biome_holymountain" then
+      temp_mountains[prev_biome] = y
+    else
+      prev_biome = cur_biome
+    end
+  end
+  local function refine_position(y0)
+    for y = y0, y0+500, 10 do
+      local cur_biome = BiomeMapGetName(0, y)
+      if cur_biome ~= "$biome_holymountain" then
+        return y-10, cur_biome
+      end
+    end
+  end
+  local mountains = {}
+  for biome, y in pairs(temp_mountains) do
+    local teleport_y, next_biome = refine_position(y)
+    teleport_y = teleport_y-200
+    local teleport_x = -200
+    if SPECIAL_LOCATIONS[next_biome] then
+      teleport_x = SPECIAL_LOCATIONS[next_biome].x or teleport_x
+      teleport_y = SPECIAL_LOCATIONS[next_biome].y or teleport_y
+    end
+    local label = ("%s (%d, %d)"):format(GameTextGet(next_biome), teleport_x, teleport_y)
+    table.insert(quick_teleports, {label, teleport_x, teleport_y})
+  end
+  table.sort(quick_teleports, function(a, b) return a[3] < b[3] end)
+  return quick_teleports
+end
+
 teleport_panel = Panel{"teleport", function()
   xpos_widget(1, 12)
   ypos_widget(1, 16)
@@ -617,12 +659,21 @@ teleport_panel = Panel{"teleport", function()
     local x, y = get_player_pos()
     xpos_val.value, ypos_val.value = math.floor(x), math.floor(y)
   end
-  if GuiButton( gui, 0, 4, "[Zero position]", next_id() ) then
+  if GuiButton( gui, 0, 0, "[Zero position]", next_id() ) then
     xpos_val.value, ypos_val.value = 0, 0
   end
-  if GuiButton( gui, 0, 8, "[Teleport]", next_id() ) then
+  if GuiButton( gui, 0, 0, "[Teleport]", next_id() ) then
     GamePrint(("Attempting to teleport to (%d, %d)"):format(xpos_val.value, ypos_val.value))
     teleport(xpos_val.value, ypos_val.value)
+  end
+  GuiText(gui, 0, 0, " ") -- just a spacer
+  GuiText(gui, 0, 0, "----Quick Teleports----")
+  for i, location in ipairs(find_quick_teleports()) do
+    local label, x, y = unpack(location)
+    if GuiButton(gui, 0, 0, label, next_id() ) then
+      GamePrint(("Attempting to teleport to (%d, %d)"):format(x, y))
+      teleport(x, y)
+    end
   end
   GuiLayoutEnd(gui)
 end}
@@ -943,6 +994,16 @@ register_widget("items", StatsWidget("Items", "items"))
 register_widget("projectiles", StatsWidget("Shot", "projectiles_shot", 3))
 register_widget("kicks", StatsWidget("Kicked", "kicks"))
 register_widget("kills", StatsWidget("Kills", "enemies_killed"))
+register_widget("damage", StatsWidget("Damage taken", "damage_taken"))
+register_widget("frame", {
+  text = function()
+    return ("Frame: %08d"):format(GameGetFrameNum())
+  end,
+  on_click = function()
+    goto_subpanel(info_panel)
+  end,
+  width = 16
+})
 
 register_widget("position", {
   text = function()
