@@ -7,7 +7,7 @@ dofile_once( "data/hax/alchemy.lua")
 dofile_once( "data/hax/gun_builder.lua")
 dofile_once( "data/hax/superhackykb.lua")
 
-local CHEATGUI_VERSION = "1.1.0b"
+local CHEATGUI_VERSION = "1.2.0b"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
 if not _keyboard_present then CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" end
 
@@ -570,7 +570,19 @@ local delay_widget, delay_val = create_numerical("Delay", {1, 10}, 30, 'frame')
 local spread_widget, spread_val = create_numerical("Spread", {0.1, 1}, 0.0, 'float')
 local speed_widget, speed_val = create_numerical("Speed", {0.01, 0.1}, 1.0, 'float')
 
-local always_cast_choice = nil
+--local always_cast_choice = nil
+local MAX_ALWAYS_CASTS=10 -- eh
+local always_cast_index = 1
+local always_casts = {}
+local function compact_always_casts()
+  local new_always_casts = {}
+  for idx = 1, MAX_ALWAYS_CASTS do
+    if always_casts[idx] then
+      table.insert(new_always_casts, always_casts[idx])
+    end
+  end
+  always_casts = new_always_casts
+end
 
 local builder_widgets = {
   {shuffle_widget, shuffle_val},
@@ -592,8 +604,14 @@ builder_panel = Panel{"wand builder", function()
   end
 
   GuiLayoutBeginVertical(gui, 1, 48)
-  if GuiButton( gui, 0, 0, "Always cast: " .. (always_cast_choice or "None"), next_id() ) then
-    enter_panel(always_cast_panel)
+  for idx = 1, MAX_ALWAYS_CASTS do
+    local label = "Always cast"
+    if idx > 1 then label = label .. " (" .. idx .. ")" end
+    if GuiButton( gui, 0, 0, label .. ": " .. (always_casts[idx] or "None"), next_id() ) then
+      always_cast_index = idx
+      enter_panel(always_cast_panel)
+    end
+    if not always_casts[idx] then break end
   end
   if GuiButton( gui, 0, 0, "[Reset all]", next_id() ) then
     for _, widget in ipairs(builder_widgets) do
@@ -612,7 +630,7 @@ builder_panel = Panel{"wand builder", function()
       speed_multiplier = speed_val.value,
       mana_max = mana_val.value,
       mana_charge_speed = mana_rec_val.value,
-      always_cast = always_cast_choice
+      always_casts = always_casts --always_cast_choice
     }
     build_gun(x, y, gun)
   end
@@ -773,7 +791,8 @@ local function spawn_spell_button(card)
 end
 
 local function set_always_cast(card)
-  always_cast_choice = card.id
+  always_casts[always_cast_index] = (card and card.id) or nil
+  compact_always_casts()
   prev_panel()
 end
 
@@ -782,8 +801,7 @@ local always_cast_options = {
   {
     text = "None", 
     f = function()
-      always_cast_choice = nil
-      prev_panel()
+      set_always_cast(nil)
     end
   }
 }
