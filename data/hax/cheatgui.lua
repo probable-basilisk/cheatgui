@@ -617,6 +617,8 @@ builder_panel = Panel{"wand builder", function()
     for _, widget in ipairs(builder_widgets) do
       widget[2]:reset()
     end
+    always_casts = {}
+    always_cast_index=1
   end
   if GuiButton( gui, 0, 4, "[Spawn]", next_id() ) then
     local x, y = get_player_pos()
