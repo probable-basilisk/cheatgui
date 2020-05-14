@@ -74,7 +74,7 @@ local gui = _cheat_gui
 
 local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel
 local wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
-local health_panel
+local health_panel, money_panel
 
 local function Panel(options)
   if not options.name then
@@ -236,6 +236,22 @@ end
 local function quick_heal()
   local _, max_hp = get_health()
   set_health(max_hp, max_hp)
+end
+
+local function set_money(amt)
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  ComponentSetValue2(wallet, "money", amt)
+end
+
+local function get_money()
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  return ComponentGetValue2(wallet, "money")
+end
+
+local function twiddle_money(delta)
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  local current = ComponentGetValue2(wallet, "money")
+  ComponentSetValue2(wallet, "money", math.max(0, current+delta))
 end
 
 local function spawn_potion(material, quantity)
@@ -691,8 +707,50 @@ health_panel = Panel{"health", function()
   if GuiButton( gui, 0, 0, "[Get current health]", next_id() ) then
     cur_hp_val.value, max_hp_val.value = get_health()
   end
-  if GuiButton( gui, 0, 8, "[Apply health changes]", next_id() ) then
+  if GuiButton( gui, 0, 0, "[Apply health changes]", next_id() ) then
     set_health(cur_hp_val.value, max_hp_val.value)
+  end
+  GuiText(gui, 0, 0, " ") -- just a spacer
+  GuiText(gui, 0, 0, "----Quick health----")
+  if GuiButton( gui, 0, 0, "[Add +25 max HP]", next_id() ) then
+    cur_hp_val.value, max_hp_val.value = get_health()
+    cur_hp_val.value, max_hp_val.value = cur_hp_val.value+1, max_hp_val.value+1
+    set_health(cur_hp_val.value, max_hp_val.value)
+  end
+  if GuiButton( gui, 0, 0, "[Add +100 max HP]", next_id() ) then
+    cur_hp_val.value, max_hp_val.value = get_health()
+    cur_hp_val.value, max_hp_val.value = cur_hp_val.value+4, max_hp_val.value+4
+    set_health(cur_hp_val.value, max_hp_val.value)
+  end
+  GuiLayoutEnd(gui)
+end}
+
+local money_widget, money_val = create_numerical("Gold", {10, 100, 1000}, 0, 'int')
+
+money_panel = Panel{"gold", function()
+  money_widget(1, 12)
+  breadcrumbs(1, 0)
+
+  GuiLayoutBeginVertical(gui, 1, 20)
+  if GuiButton( gui, 0, 0, "[Get current gold]", next_id() ) then
+    money_val.value = get_money()
+  end
+  if GuiButton( gui, 0, 0, "[Set current gold]", next_id() ) then
+    set_money(money_val.value)
+  end
+  GuiText(gui, 0, 0, " ") -- just a spacer
+  GuiText(gui, 0, 0, "----Quick cash----")
+  if GuiButton( gui, 0, 0, "[+100 Gold]", next_id() ) then
+    money_val.value = get_money()+100
+    set_money(money_val.value)
+  end
+  if GuiButton( gui, 0, 0, "[+500 Gold]", next_id() ) then
+    money_val.value = get_money()+500
+    set_money(money_val.value)
+  end
+  if GuiButton( gui, 0, 0, "[+2000 Gold]", next_id() ) then
+    money_val.value = get_money()+2000
+    set_money(money_val.value)
   end
   GuiLayoutEnd(gui)
 end}
@@ -929,7 +987,7 @@ end}
 
 local main_panels = {
   perk_panel, cards_panel, flasks_panel, wands_panel, 
-  builder_panel, health_panel,
+  builder_panel, health_panel, money_panel,
   teleport_panel, info_panel, gui_grid_ref_panel
 }
 
