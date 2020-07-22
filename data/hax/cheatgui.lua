@@ -7,7 +7,7 @@ dofile_once( "data/hax/alchemy.lua")
 dofile_once( "data/hax/gun_builder.lua")
 dofile_once( "data/hax/superhackykb.lua")
 
-local CHEATGUI_VERSION = "1.2.0b"
+local CHEATGUI_VERSION = "1.2.0"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
 if not _keyboard_present then CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" end
 
