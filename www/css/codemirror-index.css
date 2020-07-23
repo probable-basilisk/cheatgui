@@ -1,0 +1,63 @@
+html, body {
+    height: 100%;
+    background-color: #000000;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#content-area {
+    overflow: hidden;
+    position: relative;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    will-change: overflow;
+}
+
+.console-column {
+    width: 100%;
+    border-right: 1px solid #888;
+    overflow: auto;
+    height: auto;
+}
+
+.log-column {
+    background-color: #282a36;
+    color: #aaa;
+    border-left: 1px solid #888;
+    overflow: auto;
+    height: auto;
+    flex: 1;
+    padding-left: 10px;
+    font-family: monospace;
+    font-size: 8pt;
+}
+
+.log-item:nth-child(odd) {
+    background-color: #1B1D29;
+}
+
+.message {
+    font-weight: normal !important;
+}
+
+.error {
+    color: #FF0000 !important;
+    font-weight: bold;
+    background-color: #000;
+}
+
+.row {
+    flex: 1;
+    margin: 10px;
+    background-color: #111;
+}
+
+.linerow {
+    flex: 0.05;
+    margin: 10px;
+}

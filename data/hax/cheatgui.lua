@@ -7,9 +7,14 @@ dofile_once( "data/hax/alchemy.lua")
 dofile_once( "data/hax/gun_builder.lua")
 dofile_once( "data/hax/superhackykb.lua")
 
-local CHEATGUI_VERSION = "1.2.0b"
+local CHEATGUI_VERSION = "1.3.0"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
-if not _keyboard_present then CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" end
+if _keyboard_present then
+  -- have FFI
+  dofile_once("data/hax/console.lua")
+else
+  CHEATGUI_TITLE = CHEATGUI_TITLE .. "S" 
+end
 
 local created_gui = false
 
@@ -885,6 +890,13 @@ local function toggle_tourist_mode()
   GamePrint("Tourist mode: " .. tostring(tourist_mode_on))
 end
 
+local console_connected = false
+local function open_console()
+  local auth_token = listen_console_connections()
+  console_connected = true
+  os.execute("start http://localhost:8777/index.html?token=" .. (auth_token or "none"))
+end
+
 local xray_added = false
 local function add_permanent_xray()
   if xray_added then return end
@@ -1048,6 +1060,10 @@ register_cheat_button("[spawn orbs]", function()
   end
 end)
 
+if _keyboard_present then
+  register_cheat_button("[open console]", open_console)
+end
+
 enter_panel(menu_panel)
 
 -- widgets
@@ -1128,6 +1144,8 @@ function _cheat_gui_main()
       hide_gui()
     end
   end
+
+  if console_connected and _socket_update then _socket_update() end
 end
 
 hide_gui()
