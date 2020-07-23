@@ -162,7 +162,6 @@ function socket_mt:poll()
     return true
   elseif res == "error" then
     self._last_message = self:error_msg()
-    self._socket = nil -- hmm
     return false, self._last_message
   elseif res == "closed" then
     return false, "closed"
