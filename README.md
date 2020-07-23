@@ -13,8 +13,10 @@ but it's not guaranteed.
 
 ### Download manually
 
-[Download this repo as a .zip](https://github.com/probable-basilisk/cheatgui/archive/v1.0.zip), 
-and extract into your `Noita/mods/` directory (so this README should end up in `Noita/mods/cheatgui/README.md`).
+[Download the release .zip](https://github.com/probable-basilisk/cheatgui/releases/download/v1.3.0/cheatgui_v1_3_0_beta.zip), 
+and extract into your `Noita/mods/` directory, renaming the folder to just `cheatgui`.
+
+**IMPORTANT**: The naming of the installation directory matters-- **this README should end up in `Noita/mods/cheatgui/README.md`**.
 
 ### (or) Clone the Git repo
 
@@ -25,6 +27,8 @@ cd {your Noita install dir}/mods/
 git clone https://github.com/probable-basilisk/cheatgui.git
 ```
 
+**IMPORTANT**: You will need to get the `pollnet.dll` binary from the [release zip](https://github.com/probable-basilisk/cheatgui/releases/download/v1.3.0/cheatgui_v1_3_0_beta.zip), located in `bin/pollnet.dll`. You should copy this file to `Noita/mods/cheatgui/bin/pollnet.dll`.
+
 ### Enable the mod in Noita
 
 Enable the 'cheatgui' mod through the in-game pause menu.
@@ -33,21 +37,8 @@ You will be prompted that "This mod has requested extra privileges." – see the
 
 #### Note about scary warnings
 
-Cheatgui asks for scary permissions because it has to do some horrible workarounds in
-order to be able to do the type-to-filter thing. Some day I hope the devs will give
-us an actual textbox-type GUI component, but until then scary permissions and
-hacks are the best we can do. If this permission really scares you, you
-can edit `mod.xml` to not request the permission, and it'll mostly still work
-except for type-to-filter:
-
-```XML
-<Mod
-	name="Cheatgui"
-	description="Basic cheat menu"
-	request_no_api_restrictions="0"
->
-</Mod>
-```
+Cheatgui needs unsafe access to allow typing, and to enable the web console. If the warnings bother you, get the Steam workshop version, although
+you will obviously miss out on the type-to-filter and webconsole functionality.
 
 ## Note about paths
 
