@@ -125,13 +125,17 @@ function initCodeMirror() {
     value: "-- Put multiline Lua stuff here\n",
     mode:  "lua",
     theme:  "dracula",
-    lineNumbers: true
+    lineNumbers: true,
+    tabSize: 2
   });
 
   codeWindow.setOption("extraKeys", {
     "Shift-Enter": function(cm) {
       remoteEval(cm.getValue());
       replPrint("EVAL> [buffer]");
+    },
+    "Tab": function(cm) {
+      cm.execCommand("insertSoftTab");
     }
   });
 

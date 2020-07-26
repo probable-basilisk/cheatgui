@@ -47,23 +47,6 @@ local function reload_utils(console_env)
   console_env.print("Utils loaded.")
 end
 
-local _persistent_funcs = {}
-
-local function add_persistent_func(name, f)
-  _persistent_funcs[name] = f
-end
-
-local function remove_persistent_func(name)
-  _persistent_funcs[name] = nil
-end
-
-local function run_persistent_funcs()
-  for fname, f in pairs(_persistent_funcs) do
-    local happy, err = pcall(f, fname)
-    if not happy then cprint(err) end
-  end
-end
-
 local _help_info = nil
 local function reload_help(fn)
   fn = fn or "tools_modding/lua_api_documentation.txt"
@@ -158,6 +141,12 @@ local function make_console_env(client)
     return UNPRINTABLE_RESULT
   end
 
+  function console_env.err_print(...)
+    local msg = table.concat({...}, " ")
+    client:send("ERR> " .. msg)
+    return UNPRINTABLE_RESULT
+  end
+
   function console_env.send(msg)
     client:send(msg)
   end
@@ -195,6 +184,26 @@ local function make_console_env(client)
     console_env.send("HELP> " .. (help_str(funcname) or (funcname .. "-> [no help available]")))
     return UNPRINTABLE_RESULT
   end
+
+  -- Hmm maybe it's just better to use regular async for this?
+  --[[
+  console_env._persistent_funcs = {}
+
+  function console_env.add_persistent_func(name, f)
+    console_env._persistent_funcs[name] = f
+  end
+
+  function console_env.remove_persistent_func(name)
+    console_env._persistent_funcs[name] = nil
+  end
+
+  function console_env.run_persistent_funcs()
+    for fname, f in pairs(console_env._persistent_funcs) do
+      local happy, err = pcall(f, fname)
+      if not happy then console_env.err_print(err or "?") end
+    end
+  end
+  ]]
 
   console_env.complete = make_complete(console_env)
   console_env.add_persistent_func = add_persistent_func
@@ -368,6 +377,7 @@ end
 
 local count = 0
 function _socket_update()
+  wake_up_waiting_threads(1) -- from coroutines.lua
   if not ws_server_socket then return end
   local happy, msg = ws_server_socket:poll()
   if not happy then
