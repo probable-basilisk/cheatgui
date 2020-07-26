@@ -154,12 +154,12 @@ local function make_console_env(client)
 
   function console_env.print(...)
     local msg = table.concat({...}, " ")
-    client.sock:send("GAME> " .. msg)
+    client:send("GAME> " .. msg)
     return UNPRINTABLE_RESULT
   end
 
   function console_env.send(msg)
-    client.sock:send(msg)
+    client:send(msg)
   end
 
   function console_env.print_table(t)
@@ -255,10 +255,14 @@ local function get_token()
   if not auth_token then
     if not JSON then dofile_once("data/hax/lib/json.lua") end
     local tdata = read_raw_file(TOKEN_FN)
-    if tdata then tdata = JSON:decode(tdata) end
-    if tdata and tdata.expiration and (tdata.expiration < os.time()) then
+    if tdata then 
+      tdata = JSON:decode(tdata) 
+      print("Got existing token: " .. tdata.token .. " -- " .. tdata.expiration)
+    end
+    if tdata and tdata.expiration and (tdata.expiration > os.time()) then
       auth_token = tdata.token
     else
+      print("Token expired? " .. tdata.expiration .. " vs. " .. os.time())
       auth_token = generate_token()
     end
   end
@@ -273,10 +277,19 @@ local function close_client(client)
   ws_clients[client.addr] = nil
 end
 
+local function client_send(client, msg)
+  if client.sock then
+    client.stat_out = (client.stat_out or 0) + 1
+    client.sock:send(msg)
+  else
+    client:close()
+  end
+end
+
 local function on_new_client(sock, addr)
   print("New client: " .. addr)
   if ws_clients[addr] then ws_clients[addr].sock:close() end
-  local new_client = {addr = addr, sock = sock, authorized = false, close = close_client}
+  local new_client = {addr = addr, sock = sock, authorized = false, close = close_client, send = client_send, stat_in=0, stat_out=0}
   new_client.console_env = make_console_env(new_client)
   ws_clients[addr] = new_client
 end
@@ -328,6 +341,7 @@ local function _handle_client_message(client, msg)
     return check_authorization(client, msg)
   end
 
+  client.stat_in = (client.stat_in or 0) + 1
   local f, err = nil, nil
   if not msg:find("\n") then
     -- if this is a single line, try putting "return " in front
@@ -337,7 +351,7 @@ local function _handle_client_message(client, msg)
   if not f then -- multiline, or not an expression
     f, err = loadstring(msg)
     if not f then
-      client.sock:send("ERR> Parse error: " .. tostring(err))
+      client:send("ERR> Parse error: " .. tostring(err))
       return
     end
   end
@@ -345,10 +359,10 @@ local function _handle_client_message(client, msg)
   local happy, retval = _collect(pcall(f))
   if happy then
     if retval ~= UNPRINTABLE_RESULT then
-      client.sock:send("RES> " .. tostring(retval))
+      client:send("RES> " .. tostring(retval))
     end
   else
-    client.sock:send("ERR> " .. tostring(retval))
+    client:send("ERR> " .. tostring(retval))
   end
 end
 

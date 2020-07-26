@@ -1029,7 +1029,9 @@ console_panel = Panel{"console", function()
   end
   table.sort(sorted_conns)
   for _, addr in ipairs(sorted_conns) do
-    if GuiButton( gui, 0, 0, addr, next_id() ) then
+    local conn = conns[addr] or {stat_out=-1, stat_in=-1}
+    local text = ("%s [in: %d, out: %d]"):format(addr, conn.stat_in or 0, conn.stat_out or 0)
+    if GuiButton( gui, 0, 0, text, next_id() ) then
       if conns[addr] then conns[addr]:close() end
     end
   end
