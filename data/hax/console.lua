@@ -222,29 +222,77 @@ local ws_server_socket = nil
 local http_server = nil
 local ws_clients = {}
 
+local TOKEN_FN = "mods/cheatgui/token.json"
+local TOKEN_EXPIRATION = 6*3600 -- tokens expire after six hours
+
+local function read_raw_file(filename)
+  local f, err = io.open(filename)
+  if not f then return nil end
+  local res = f:read("*a")
+  f:close()
+  return res
+end
+
+local function write_raw_file(filename, data)
+  local f, err = io.open(filename, "w")
+  if not f then error("Couldn't write " .. filename .. ": " .. err) end
+  f:write(data)
+  f:close()
+end
+
 local auth_token = nil
+local function generate_token()
+  print("Cheatgui webconsole: generating new token.")
+  auth_token = lib_pollnet.nanoid()
+  write_raw_file(TOKEN_FN, JSON:encode_pretty{
+    token = auth_token,
+    expiration = os.time() + TOKEN_EXPIRATION
+  })
+  return auth_token
+end
+
 local function get_token()
   if not auth_token then
-    auth_token = lib_pollnet.nanoid()
+    if not JSON then dofile_once("data/hax/lib/json.lua") end
+    local tdata = read_raw_file(TOKEN_FN)
+    if tdata then tdata = JSON:decode(tdata) end
+    if tdata and tdata.expiration and (tdata.expiration < os.time()) then
+      auth_token = tdata.token
+    else
+      auth_token = generate_token()
+    end
   end
   return auth_token
+end
+
+local function close_client(client)
+  if client.sock then
+    client.sock:close()
+    client.sock = nil
+  end
+  ws_clients[client.addr] = nil
 end
 
 local function on_new_client(sock, addr)
   print("New client: " .. addr)
   if ws_clients[addr] then ws_clients[addr].sock:close() end
-  local new_client = {addr = addr, sock = sock, authorized = false}
+  local new_client = {addr = addr, sock = sock, authorized = false, close = close_client}
   new_client.console_env = make_console_env(new_client)
   ws_clients[addr] = new_client
 end
 
 function listen_console_connections()
+  lib_pollnet.link()
   if not ws_server_socket then
     ws_server_socket = lib_pollnet.listen_ws("127.0.0.1:9777", SCRATCH_SIZE)
     ws_server_socket:on_connection(on_new_client)
     http_server = lib_pollnet.serve_http("127.0.0.1:8777", "mods/cheatgui/www")
   end
   return get_token()
+end
+
+function get_console_connections()
+  return ws_clients
 end
 
 function close_console_connections()

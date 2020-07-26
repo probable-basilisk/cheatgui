@@ -79,7 +79,7 @@ local gui = _cheat_gui
 
 local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel
 local wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
-local health_panel, money_panel
+local health_panel, money_panel, console_panel
 
 local function Panel(options)
   if not options.name then
@@ -897,20 +897,6 @@ local function open_console()
   os.execute("start http://localhost:8777/index.html?token=" .. (auth_token or "none"))
 end
 
-local xray_added = false
-local function add_permanent_xray()
-  if xray_added then return end
-  local px, py = get_player_pos()
-  local cid = EntityLoad( "data/entities/misc/effect_remove_fog_of_war.xml", px, py )
-  EntityAddChild( get_player(), cid )
-  -- EntityAddComponent(get_player(), "MagicXRayComponent", {
-  --   radius = 2048,
-  --   steps_per_frame = 8
-  -- })
-  GamePrint("Permanent XRay Added?")
-  xray_added = true
-end
-
 local seedval = "?"
 SetRandomSeed(0, 0)
 seedval = tostring(Random() * 2^31)
@@ -1017,11 +1003,46 @@ info_panel = Panel{"widgets", function()
   GuiLayoutEnd(gui)
 end}
 
+console_panel = Panel{"console", function()
+  breadcrumbs(1, 0)
+  GuiLayoutBeginVertical(gui, 1, 11)
+  if console_connected then
+    if GuiButton( gui, 0, 0, "[Close console host]", next_id() ) then
+      close_console_connections()
+      console_connected = false
+    end
+  else
+    if GuiButton( gui, 0, 0, "[Open console host]", next_id() ) then
+      listen_console_connections()
+      console_connected = true
+    end
+  end
+  if GuiButton( gui, 0, 0, "[Open new console]", next_id() ) then
+    open_console()
+  end
+  GuiText(gui, 0, 0, " ") -- just a spacer
+  GuiText(gui, 0, 0, "----Active connections (click to close)----")
+  local conns = get_console_connections()
+  local sorted_conns = {}
+  for addr, client in pairs(conns) do
+    table.insert(sorted_conns, addr)
+  end
+  table.sort(sorted_conns)
+  for _, addr in ipairs(sorted_conns) do
+    if GuiButton( gui, 0, 0, addr, next_id() ) then
+      if conns[addr] then conns[addr]:close() end
+    end
+  end
+  GuiLayoutEnd(gui)
+end}
+
 local main_panels = {
   perk_panel, cards_panel, flasks_panel, wands_panel, 
   builder_panel, health_panel, money_panel,
   teleport_panel, info_panel, gui_grid_ref_panel
 }
+
+if _keyboard_present then table.insert(main_panels, console_panel) end
 
 local function draw_main_panels()
   for idx, panel in ipairs(main_panels) do
@@ -1061,7 +1082,10 @@ register_cheat_button("[spawn orbs]", function()
 end)
 
 if _keyboard_present then
-  register_cheat_button("[open console]", open_console)
+  register_cheat_button("[open console]", function()
+    open_console()
+    enter_panel(console_panel)
+  end)
 end
 
 enter_panel(menu_panel)

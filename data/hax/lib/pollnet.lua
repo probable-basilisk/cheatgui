@@ -59,11 +59,27 @@ local POLLNET_RESULT_CODES = {
   [6] = "newclient"
 }
 
-local pollnet = ffi.load("mods/cheatgui/bin/pollnet.dll")
+local LIB_PATH = "mods/cheatgui/bin/pollnet.dll"
+
+local pollnet = nil
 local _ctx = nil
+
+local function link_pollnet(return_error)
+  if pollnet then return end
+  local happy, res = pcall(ffi.load, LIB_PATH)
+  local err_msg = "Pollnet DLL missing or corrupt: " .. LIB_PATH
+  if happy then
+    pollnet = res
+  elseif return_error then
+    return err_msg .. ": " .. res
+  else
+    error(err_msg .. ": " .. res)
+  end
+end
 
 local function init_ctx()
   if _ctx then return end
+  if not pollnet then link_pollnet() end
   _ctx = ffi.gc(pollnet.pollnet_init(), pollnet.pollnet_shutdown)
   assert(_ctx ~= nil)
 end
@@ -88,6 +104,7 @@ end
 
 function socket_mt:_open(scratch_size, opener, ...)
   init_ctx()
+  if not _ctx then return end
   if self._socket then self:close() end
   if not scratch_size then scratch_size = 64000 end
   if type(opener) == "number" then
@@ -228,6 +245,7 @@ end
 
 lib_pollnet = {
   init = init_ctx,
+  link = link_pollnet,
   init_hack_static = init_ctx_hack_static,
   shutdown = shutdown_ctx, 
   open_ws = open_ws, 

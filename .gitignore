@@ -4,3 +4,4 @@ mod_id.txt
 workshop_id.txt
 compatibility.xml
 *.dll
+token.json
