@@ -271,7 +271,11 @@ local function get_token()
     if tdata and tdata.expiration and (tdata.expiration > os.time()) then
       auth_token = tdata.token
     else
-      print("Token expired? " .. tdata.expiration .. " vs. " .. os.time())
+      if tdata then
+        print("Token expired? " .. tdata.expiration .. " vs. " .. os.time())
+      else 
+        print("No token; generating new.")
+      end
       auth_token = generate_token()
     end
   end
