@@ -27,10 +27,10 @@ local MOCKED_FUNCTIONS = {
   "EntityCreateNew",
   "EntityAddComponent",
   "EntityAddChild",
-  "EntityGetAllChildren",
   "GameTriggerMusicFadeOutAndDequeueAll",
   "GameTriggerMusicEvent",
   "EntityLoad",
+  "print", -- stop fungal_shift from spamming the log!!!
 }
 
 if not loadstring then
@@ -41,6 +41,7 @@ if not loadstring then
   end
 end
 
+local _fungal_iteration = 0
 local function load_fungal_env()
   fungal_env = {}
 
@@ -53,6 +54,18 @@ local function load_fungal_env()
   for _, v in ipairs(MOCKED_FUNCTIONS) do
     fungal_env[v] = function(...)
       -- haha do nothing
+    end
+  end
+
+  fungal_env.GlobalsGetValue = function(v, ...)
+    if v == "fungal_shift_last_frame" then
+      -- force it to always give an answer
+      return -10000
+    elseif v == "fungal_shift_iteration" then
+      -- allow us to manipulate the iteration
+      return tostring(_fungal_iteration)
+    else
+      return GlobalsGetValue(v, ...)
     end
   end
 
@@ -72,7 +85,8 @@ local function get_player_pos()
   return EntityGetTransform(player)
 end
 
-local function predict_transform()
+local function predict_transform(iter_offset)
+  _fungal_iteration = tonumber(GlobalsGetValue("fungal_shift_iteration", "0")) + iter_offset
   local _from, _to = nil, nil
   fungal_env.ConvertMaterialEverywhere = function(from_material, to_material)
     _from = CellFactory_GetUIName(from_material) --:gsub("$", "")
@@ -82,8 +96,22 @@ local function predict_transform()
   return _from, _to
 end
 
-function fungal_predict_transform()
+local function to_material_int_type(v)
+  if type(v) ~= "number" then
+    v = CellFactory_GetType(v)
+  end
+  return v
+end
+
+function fungal_force_convert(from, to)
+  ConvertMaterialEverywhere(
+    to_material_int_type(from),
+    to_material_int_type(to)
+  )
+end
+
+function fungal_predict_transform(iter_offset)
   if not fungal_env then load_fungal_env() end
   if not fungal_env then return nil end
-  return predict_transform()
+  return predict_transform(iter_offset)
 end

@@ -724,15 +724,6 @@ teleport_panel = Panel{"teleport", function()
   GuiLayoutEnd(gui)
 end}
 
-local fungal_panel = Panel{"fungal", function()
-  breadcrumbs(1, 0)
-  GuiLayoutBeginVertical(gui, 1, 12)
-  local shift_from, shift_to = fungal_predict_transform()
-  local shift_str = tostring((shift_from or "?")) .. " -> " .. tostring((shift_to or "?"))
-  GuiText(gui, 0, 0, "Next shift: " .. shift_str)
-  GuiLayoutEnd(gui)
-end}
-
 local cur_hp_widget, cur_hp_val = create_numerical("HP", {1, 4}, 4, 'hearts')
 local max_hp_widget, max_hp_val = create_numerical("Max HP", {1, 4}, 4, 'hearts')
 
@@ -1043,6 +1034,44 @@ info_panel = Panel{"widgets", function()
   end
   GuiLayoutEnd(gui)
 end}
+
+local fungal_conv = {from="blood", to="blood"}
+local fungal_index
+
+local function choose_fungal_material(mat)
+  fungal_conv[fungal_index] = mat.id
+  prev_panel()
+end
+
+local fungal_material_panel = Panel{"shift material", 
+  wrap_localized(wrap_paginate("Select a material: ", potion_options, nil, choose_fungal_material))}
+
+local function predict_nth_shift(n)
+  local shift_from, shift_to = fungal_predict_transform(n or 0)
+  return tostring((shift_from or "?")) .. " -> " .. tostring((shift_to or "?"))
+end
+
+local fungal_panel = Panel{"fungal", function()
+  breadcrumbs(1, 0)
+  GuiLayoutBeginVertical(gui, 1, 12)
+  GuiText(gui, 0, 0, "Next shift: " .. predict_nth_shift(0))
+  GuiText(gui, 0, 0, "Next shift+1: " .. predict_nth_shift(1))
+  GuiText(gui, 0, 0, "Next shift+2: " .. predict_nth_shift(2))
+  if GuiButton( gui, 0, 0, "FROM: " .. fungal_conv.from, next_id() ) then
+    fungal_index = "from"
+    enter_panel(fungal_material_panel)
+  end
+  if GuiButton( gui, 0, 0, "TO: " .. fungal_conv.to, next_id() ) then
+    fungal_index = "to"
+    enter_panel(fungal_material_panel)
+  end
+  if GuiButton( gui, 0, 0, "[Force convert]", next_id()) then
+    GamePrint("Would convert: " .. fungal_conv.from .. " -> " .. fungal_conv.to)
+    fungal_force_convert(fungal_conv.from, fungal_conv.to)
+  end
+  GuiLayoutEnd(gui)
+end}
+
 
 console_panel = Panel{"console", function()
   breadcrumbs(1, 0)
