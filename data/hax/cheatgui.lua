@@ -5,6 +5,7 @@ dofile_once("data/scripts/gun/gun_actions.lua")
 dofile_once("data/hax/materials.lua")
 dofile_once("data/hax/alchemy.lua")
 dofile_once("data/hax/spawnables.lua")
+dofile_once("data/hax/special_spawnables.lua")
 dofile_once("data/hax/gun_builder.lua")
 dofile_once("data/hax/superhackykb.lua")
 
@@ -984,11 +985,18 @@ local function spawn_item_button(item)
   spawn_item(item.path)
 end
 
+-- merge special spawns into the base spawnlist
+for _, v in ipairs(special_spawnables) do
+  table.insert(spawn_list, v)
+end
+
+-- generate spawn item options
 local spawn_options = {}
 for idx, item in ipairs(spawn_list) do
   spawn_options[idx] = {
-    text = item.name, --localized_name, 
+    text = localized_name,
     path = item.path,
+    id = item.xml,
     ui_name = item.name, 
     f = spawn_item_button
   }
@@ -998,7 +1006,7 @@ always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a 
 cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
 perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
 flasks_panel = Panel{"flasks", flask_panel_func}
-spawn_panel = Panel{"items", wrap_paginate("Select an item to spawn:", spawn_options)}
+spawn_panel = Panel{"items", wrap_localized(wrap_paginate("Select an item to spawn:", spawn_options))}
 
 wands_panel = Panel{"wands", function()
   grid_panel("Select a wand to spawn:", wand_options)

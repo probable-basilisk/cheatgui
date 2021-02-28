@@ -134,6 +134,9 @@ local function make_console_env(client)
   for k, v in pairs(getfenv()) do
     console_env[k] = v
   end
+  for k, v in pairs(cheatgui_stash) do
+    if not console_env[k] then console_env[k] = v end
+  end
 
   function console_env.print(...)
     local msg = table.concat({...}, " ")
