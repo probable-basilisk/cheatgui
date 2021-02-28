@@ -1,11 +1,12 @@
-dofile_once( "data/scripts/lib/coroutines.lua" )
-dofile_once( "data/scripts/lib/utilities.lua" )
-dofile_once( "data/scripts/perks/perk.lua")
-dofile_once( "data/scripts/gun/gun_actions.lua" )
-dofile_once( "data/hax/materials.lua")
-dofile_once( "data/hax/alchemy.lua")
-dofile_once( "data/hax/gun_builder.lua")
-dofile_once( "data/hax/superhackykb.lua")
+dofile_once("data/scripts/lib/coroutines.lua")
+dofile_once("data/scripts/lib/utilities.lua")
+dofile_once("data/scripts/perks/perk.lua")
+dofile_once("data/scripts/gun/gun_actions.lua")
+dofile_once("data/hax/materials.lua")
+dofile_once("data/hax/alchemy.lua")
+dofile_once("data/hax/spawnables.lua")
+dofile_once("data/hax/gun_builder.lua")
+dofile_once("data/hax/superhackykb.lua")
 
 local CHEATGUI_VERSION = "1.3.1"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
@@ -79,7 +80,7 @@ local gui = _cheat_gui
 
 local closed_panel, perk_panel, cards_panel, menu_panel, flasks_panel
 local wands_panel, builder_panel, always_cast_panel, teleport_panel, info_panel
-local health_panel, money_panel, console_panel
+local health_panel, money_panel, spawn_panel, console_panel
 
 local function Panel(options)
   if not options.name then
@@ -973,10 +974,31 @@ local gui_grid_ref_panel = Panel{"gui grid ref.", function()
   end
 end}
 
+local function spawn_item(path)
+  local x, y = get_player_pos()
+  EntityLoad(path, x, y)
+end
+
+local function spawn_item_button(item)
+  GamePrint("Attempting to spawn " .. item.path)
+  spawn_item(item.path)
+end
+
+local spawn_options = {}
+for idx, item in ipairs(spawn_list) do
+  spawn_options[idx] = {
+    text = item.name, --localized_name, 
+    path = item.path,
+    ui_name = item.name, 
+    f = spawn_item_button
+  }
+end
+
 always_cast_panel = Panel{"always cast", wrap_localized(wrap_paginate("Select a spell: ", always_cast_options))}
 cards_panel = Panel{"spells", wrap_localized(wrap_paginate("Select a spell to spawn:", spell_options))}
 perk_panel = Panel{"perks", wrap_localized(wrap_paginate("Select a perk to spawn:", perk_options))}
 flasks_panel = Panel{"flasks", flask_panel_func}
+spawn_panel = Panel{"items", wrap_paginate("Select an item to spawn:", spawn_options)}
 
 wands_panel = Panel{"wands", function()
   grid_panel("Select a wand to spawn:", wand_options)
@@ -1039,7 +1061,7 @@ console_panel = Panel{"console", function()
 end}
 
 local main_panels = {
-  perk_panel, cards_panel, flasks_panel, wands_panel, 
+  perk_panel, cards_panel, flasks_panel, wands_panel, spawn_panel,
   builder_panel, health_panel, money_panel,
   teleport_panel, info_panel, gui_grid_ref_panel
 }
