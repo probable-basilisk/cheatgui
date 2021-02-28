@@ -333,6 +333,12 @@ function close_console_connections()
   http_server = nil
 end
 
+function send_all_consoles(msg)
+  for _, sock in pairs(ws_clients) do
+    sock:send("ERR>" .. msg)
+  end
+end
+
 local function check_authorization(client, msg)
   if not is_localhost(client.addr) then
     client.sock:send("SYS> UNAUTHORIZED: NOT LOCALHOST!")

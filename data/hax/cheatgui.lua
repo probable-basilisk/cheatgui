@@ -6,11 +6,14 @@ dofile_once("data/hax/materials.lua")
 dofile_once("data/hax/alchemy.lua")
 dofile_once("data/hax/spawnables.lua")
 dofile_once("data/hax/special_spawnables.lua")
+dofile_once("data/hax/fungal.lua")
 dofile_once("data/hax/gun_builder.lua")
 dofile_once("data/hax/superhackykb.lua")
 
 local CHEATGUI_VERSION = "1.4.0"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
+local console_connected = false
+
 if _keyboard_present then
   -- have FFI
   dofile_once("data/hax/console.lua")
@@ -288,7 +291,7 @@ local function get_option_text(opt)
   return maybe_call(opt.text or opt[1], opt)
 end
 
-local function grid_layout(options, col_width)
+local function grid_layout(options, col_width, callback)
   local num_options = #options
   local col_size = 28
   local ncols = math.ceil(num_options / col_size)
@@ -303,7 +306,7 @@ local function grid_layout(options, col_width)
       local opt = options[opt_pos]
       local text = get_option_text(opt)
       if GuiButton( gui, 0, 0, text, next_id() ) then
-        (opt.f or opt[2])(opt)
+        (callback or opt.f or opt[2])(opt)
       end
       opt_pos = opt_pos + 1
     end
@@ -312,9 +315,9 @@ local function grid_layout(options, col_width)
   end
 end
 
-local function grid_panel(title, options, col_width)
+local function grid_panel(title, options, col_width, callback)
   breadcrumbs(1, 0)
-  grid_layout(options, col_width)
+  grid_layout(options, col_width, callback)
 end
 
 local function filter_options(options, str)
@@ -393,7 +396,7 @@ local function breakup_pages(options, page_size)
   return pages
 end
 
-local function wrap_paginate(title, options, page_size)
+local function wrap_paginate(title, options, page_size, callback)
   page_size = page_size or 28*4
   local cur_page = 1
   local pages = breakup_pages(options, page_size)
@@ -436,7 +439,7 @@ local function wrap_paginate(title, options, page_size)
     alphabetize_widget(31, 0)
 
     if (not filter_str) or (filter_str == "") then
-      grid_panel(title, pages[cur_page])
+      grid_panel(title, pages[cur_page], nil, callback)
       if cur_page > 1 then
         GuiLayoutBeginHorizontal(gui, 46, 96)
         if GuiButton( gui, 0, 0, "<-", next_id() ) then
@@ -463,7 +466,7 @@ local function wrap_paginate(title, options, page_size)
           alphabetize_val.value
         )
       end
-      grid_panel(title, filtered_set)
+      grid_panel(title, filtered_set, nil, callback)
     end
   end
 end
@@ -892,7 +895,6 @@ local function toggle_tourist_mode()
   GamePrint("Tourist mode: " .. tostring(tourist_mode_on))
 end
 
-local console_connected = false
 local function open_console()
   local auth_token = listen_console_connections()
   console_connected = true
@@ -1033,6 +1035,44 @@ info_panel = Panel{"widgets", function()
   GuiLayoutEnd(gui)
 end}
 
+local fungal_conv = {from="blood", to="blood"}
+local fungal_index
+
+local function choose_fungal_material(mat)
+  fungal_conv[fungal_index] = mat.id
+  prev_panel()
+end
+
+local fungal_material_panel = Panel{"shift material", 
+  wrap_localized(wrap_paginate("Select a material: ", potion_options, nil, choose_fungal_material))}
+
+local function predict_nth_shift(n)
+  local shift_from, shift_to = fungal_predict_transform(n or 0)
+  return tostring((shift_from or "?")) .. " -> " .. tostring((shift_to or "?"))
+end
+
+local fungal_panel = Panel{"fungal", function()
+  breadcrumbs(1, 0)
+  GuiLayoutBeginVertical(gui, 1, 12)
+  GuiText(gui, 0, 0, "Next shift: " .. predict_nth_shift(0))
+  GuiText(gui, 0, 0, "Next shift+1: " .. predict_nth_shift(1))
+  GuiText(gui, 0, 0, "Next shift+2: " .. predict_nth_shift(2))
+  if GuiButton( gui, 0, 0, "FROM: " .. fungal_conv.from, next_id() ) then
+    fungal_index = "from"
+    enter_panel(fungal_material_panel)
+  end
+  if GuiButton( gui, 0, 0, "TO: " .. fungal_conv.to, next_id() ) then
+    fungal_index = "to"
+    enter_panel(fungal_material_panel)
+  end
+  if GuiButton( gui, 0, 0, "[Force convert]", next_id()) then
+    GamePrint("Would convert: " .. fungal_conv.from .. " -> " .. fungal_conv.to)
+    fungal_force_convert(fungal_conv.from, fungal_conv.to)
+  end
+  GuiLayoutEnd(gui)
+end}
+
+
 console_panel = Panel{"console", function()
   breadcrumbs(1, 0)
   GuiLayoutBeginVertical(gui, 1, 11)
@@ -1071,7 +1111,7 @@ end}
 local main_panels = {
   perk_panel, cards_panel, flasks_panel, wands_panel, spawn_panel,
   builder_panel, health_panel, money_panel,
-  teleport_panel, info_panel, gui_grid_ref_panel
+  teleport_panel, fungal_panel, info_panel, gui_grid_ref_panel
 }
 
 if _keyboard_present then table.insert(main_panels, console_panel) end
@@ -1197,6 +1237,9 @@ function _cheat_gui_main()
     if not happy then
       print("Gui error: " .. errstr)
       GamePrint("cheatgui err: " .. errstr)
+      if console_connected then
+        send_all_consoles(errstr .. ":" .. debug.traceback())
+      end
       hide_gui()
     end
   end
