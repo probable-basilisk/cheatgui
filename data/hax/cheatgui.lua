@@ -266,7 +266,7 @@ end
 
 local function spawn_potion(material, quantity)
   local x, y = get_player_pos()
-  local entity = EntityLoad("data/hax/potion_empty.xml", x, y)
+  local entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
   AddMaterialInventoryMaterial( entity, material, quantity or 1000 )
 end
 
