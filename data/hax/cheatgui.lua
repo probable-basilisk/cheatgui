@@ -264,9 +264,25 @@ local function twiddle_money(delta)
   ComponentSetValue2(wallet, "money", math.max(0, current+delta))
 end
 
-local function spawn_potion(material, quantity)
+function empty_container_of_materials(idx)
+  for _ = 1, 1000 do -- avoid infinite loop
+    local material = GetMaterialInventoryMainMaterial(idx)
+    if material <= 0 then break end
+    local matname = CellFactory_GetName(material)
+    AddMaterialInventoryMaterial(idx, matname, 0)
+  end
+end
+
+function spawn_potion(material, quantity, kind)
   local x, y = get_player_pos()
-  local entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
+  local entity
+  if kind == nil or kind == "potion" then 
+    entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
+  elseif kind == "pouch" then
+    entity = EntityLoad("data/entities/items/pickup/powder_stash.xml", x, y)
+    empty_container_of_materials(entity)
+    quantity = quantity * 1.5
+  end
   AddMaterialInventoryMaterial( entity, material, quantity or 1000 )
 end
 
@@ -858,10 +874,13 @@ for idx, perk in ipairs(perk_list) do
 end
 
 local quantity_widget, quantity_val = create_numerical("Quantity mult:", {100, 1000}, 1000, 'mills')
+local container_widget, container_val = create_radio("Container:", {
+  {"Potion", "potion"}, {"Pouch", "pouch"}
+}, 1)
 
 local function spawn_potion_button(potion)
   GamePrint( "Attempting to spawn potion of " .. potion.id)
-  spawn_potion(potion.id, quantity_val.value)
+  spawn_potion(potion.id, quantity_val.value, container_val.value)
 end
 
 local potion_options = {}
@@ -963,6 +982,7 @@ end
 local _flask_base = wrap_localized(wrap_paginate("Select a flask to spawn:", potion_options))
 local function flask_panel_func()
   quantity_widget(61, 3)
+  container_widget(31, 6)
   _flask_base()
 end
 
@@ -1244,6 +1264,7 @@ function _cheat_gui_main()
     end
   end
 
+  wake_up_waiting_threads(1) -- from coroutines.lua
   if console_connected and _socket_update then _socket_update() end
 end
 

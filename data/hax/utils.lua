@@ -25,9 +25,24 @@ function spawn_entity(ename, offset_x, offset_y)
   return EntityLoad(ename, x, y)
 end
 
-function spawn_potion(material)
+function empty_container_of_materials(idx)
+  for _ = 1, 1000 do -- avoid infinite loop
+    local material = GetMaterialInventoryMainMaterial(idx)
+    if material <= 0 then break end
+    local matname = CellFactory_GetName(material)
+    AddMaterialInventoryMaterial(idx, matname, 0)
+  end
+end
+
+function spawn_potion(material, kind)
   local x, y = get_player_pos()
-  local entity = EntityLoad("data/hax/potion_empty.xml", x, y)
+  local entity
+  if kind == nil or kind == "potion" then 
+    entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
+  elseif kind == "pouch" then
+    entity = EntityLoad("data/entities/items/pickup/powder_stash.xml", x, y)
+    empty_container_of_materials(entity)
+  end
   AddMaterialInventoryMaterial( entity, material, 1000 )
 end
 

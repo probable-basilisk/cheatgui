@@ -390,7 +390,6 @@ end
 
 local count = 0
 function _socket_update()
-  wake_up_waiting_threads(1) -- from coroutines.lua
   if not ws_server_socket then return end
   local happy, msg = ws_server_socket:poll()
   if not happy then
