@@ -30,6 +30,7 @@ local MOCKED_FUNCTIONS = {
   "GameTriggerMusicFadeOutAndDequeueAll",
   "GameTriggerMusicEvent",
   "EntityLoad",
+  "EntityRemoveIngestionStatusEffect",
   "print", -- stop fungal_shift from spamming the log!!!
 }
 

@@ -957,7 +957,12 @@ local fungal_material_panel = Panel{"shift material",
 
 local function predict_nth_shift(n)
   local shift_from, shift_to = fungal_predict_transform(n or 0)
-  return tostring((shift_from or "?")) .. " -> " .. tostring((shift_to or "?"))
+  if shift_from and shift_to then
+    return tostring((shift_from or "?")) .. " -> " 
+        .. tostring((shift_to or "?"))
+  else
+    return "No effect (same material chosen as src and dest)"
+  end
 end
 
 local fungal_panel = Panel{"fungal", function()
@@ -1046,10 +1051,18 @@ register_cheat_button("[edit wands everywhere]", function()
 end)
 
 register_cheat_button("[spell refresh]", function()
-  GameRegenItemActionsInPlayer( get_player() )
+  GameRegenItemActionsInPlayer(get_player())
 end)
 
 register_cheat_button("[full heal]", function() quick_heal() end)
+
+register_cheat_button("[end fungal trip]", function()
+  EntityRemoveIngestionStatusEffect(get_player(), "TRIP" )
+end)
+
+register_cheat_button("[reset fungal shift timer]", function()
+  GlobalsSetValue("fungal_shift_last_frame", "-1000000")
+end)
 
 register_cheat_button(function()
   return "[" .. ((tourist_mode_on and "disable") or "enable") .. " tourist mode]"
