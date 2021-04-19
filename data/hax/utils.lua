@@ -1,9 +1,11 @@
 function get_player()
-  return EntityGetWithTag( "player_unit" )[1]
+  return EntityGetWithTag("player_unit")[1]
 end
 
 function get_player_pos()
-  return EntityGetTransform(get_player())
+  local player = get_player()
+  if not player then return 0, 0 end
+  return EntityGetTransform(player)
 end
 
 function enable_ai(e, enabled)
@@ -18,12 +20,47 @@ function teleport(x, y)
   EntitySetTransform(get_player(), x, y)
 end
 
+function get_health()
+  local dm = EntityGetComponent(get_player(), "DamageModelComponent")[1]
+  return ComponentGetValue(dm, "hp"), ComponentGetValue(dm, "max_hp")
+end
+
+function set_health(cur_hp, max_hp)
+  local damagemodels = EntityGetComponent(get_player(), "DamageModelComponent")
+  for _, damagemodel in ipairs(damagemodels or {}) do
+    ComponentSetValue(damagemodel, "max_hp", max_hp)
+    ComponentSetValue(damagemodel, "hp", cur_hp)
+  end
+end
+
+function quick_heal()
+  local _, max_hp = get_health()
+  set_health(max_hp, max_hp)
+end
+
+function set_money(amt)
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  ComponentSetValue2(wallet, "money", amt)
+end
+
+function get_money()
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  return ComponentGetValue2(wallet, "money")
+end
+
+function twiddle_money(delta)
+  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
+  local current = ComponentGetValue2(wallet, "money")
+  ComponentSetValue2(wallet, "money", math.max(0, current+delta))
+end
+
 function spawn_entity(ename, offset_x, offset_y)
   local x, y = get_player_pos()
   x = x + (offset_x or 0)
   y = y + (offset_y or 0)
   return EntityLoad(ename, x, y)
 end
+spawn_item = spawn_entity
 
 function empty_container_of_materials(idx)
   for _ = 1, 1000 do -- avoid infinite loop
@@ -34,21 +71,31 @@ function empty_container_of_materials(idx)
   end
 end
 
-function spawn_potion(material, kind)
+function spawn_potion(material, quantity, kind)
   local x, y = get_player_pos()
+  quantity = quantity or 1000
   local entity
   if kind == nil or kind == "potion" then 
     entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
-  elseif kind == "pouch" then
+  else -- kind == "pouch"
     entity = EntityLoad("data/entities/items/pickup/powder_stash.xml", x, y)
     empty_container_of_materials(entity)
+    quantity = quantity * 1.5
   end
-  AddMaterialInventoryMaterial( entity, material, 1000 )
+  AddMaterialInventoryMaterial(entity, material, quantity)
 end
 
-function engage_tourist_mode()
-  GenomeSetHerdId( get_player(), "healer_orc" )
-  GamePrintImportant("Tourist Mode", "")
+function spawn_perk(perk_id, auto_pickup_entity)
+  local x, y = get_player_pos()
+  local perk_entity = perk_spawn(x, y - 8, perk_id)
+  if auto_pickup_entity then
+    perk_pickup(perk_entity, auto_pickup_entity, nil, true, false)
+  end
+end
+
+function set_tourist_mode(enabled)
+  local herd = (enabled and "healer") or "player"
+  GenomeSetHerdId(get_player(), herd)
 end
 
 function hello()
@@ -170,4 +217,25 @@ function do_here(fn)
   end
   setfenv(f, getfenv())
   f()
+end
+
+function round(v)
+  local upper = math.ceil(v)
+  local lower = math.floor(v)
+  if math.abs(v - upper) < math.abs(v - lower) then
+    return upper
+  else
+    return lower
+  end
+end
+
+function resolve_localized_name(s, default)
+  if s:sub(1,1) ~= "$" then return s end
+  local rep = GameTextGet(s)
+  if rep and rep ~= "" then return rep else return default or s end
+end
+
+function localize_material(mat)
+  local n = GameTextGet("$mat_" .. mat)
+  if n and n ~= "" then return n else return "[" .. mat .. "]" end
 end

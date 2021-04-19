@@ -9,6 +9,7 @@ dofile_once("data/hax/special_spawnables.lua")
 dofile_once("data/hax/fungal.lua")
 dofile_once("data/hax/gun_builder.lua")
 dofile_once("data/hax/superhackykb.lua")
+dofile_once("data/hax/utils.lua")
 
 local CHEATGUI_VERSION = "1.4.0"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
@@ -214,83 +215,6 @@ closed_panel = Panel{"[+]", function()
   end
 end}
 
-local function get_player()
-  return (EntityGetWithTag( "player_unit" ) or {})[1]
-end
-
-local function get_player_pos()
-  local player = get_player()
-  if not player then return 0, 0 end
-  return EntityGetTransform(player)
-end
-
-local function teleport(x, y)
-  EntitySetTransform(get_player(), x, y)
-end
-
-local function get_health()
-  local dm = EntityGetComponent( get_player(), "DamageModelComponent" )[1]
-  return ComponentGetValue(dm, "hp"), ComponentGetValue(dm, "max_hp")
-end
-
-local function set_health(cur_hp, max_hp)
-  local damagemodels = EntityGetComponent( get_player(), "DamageModelComponent" )
-  if( damagemodels ~= nil ) then
-    for i,damagemodel in ipairs(damagemodels) do
-      ComponentSetValue( damagemodel, "max_hp", max_hp)
-      ComponentSetValue( damagemodel, "hp", cur_hp)
-    end
-  end
-end
-
-local function quick_heal()
-  local _, max_hp = get_health()
-  set_health(max_hp, max_hp)
-end
-
-local function set_money(amt)
-  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
-  ComponentSetValue2(wallet, "money", amt)
-end
-
-local function get_money()
-  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
-  return ComponentGetValue2(wallet, "money")
-end
-
-local function twiddle_money(delta)
-  local wallet = EntityGetFirstComponent(get_player(), "WalletComponent")
-  local current = ComponentGetValue2(wallet, "money")
-  ComponentSetValue2(wallet, "money", math.max(0, current+delta))
-end
-
-function empty_container_of_materials(idx)
-  for _ = 1, 1000 do -- avoid infinite loop
-    local material = GetMaterialInventoryMainMaterial(idx)
-    if material <= 0 then break end
-    local matname = CellFactory_GetName(material)
-    AddMaterialInventoryMaterial(idx, matname, 0)
-  end
-end
-
-function spawn_potion(material, quantity, kind)
-  local x, y = get_player_pos()
-  local entity
-  if kind == nil or kind == "potion" then 
-    entity = EntityLoad("data/entities/items/pickup/potion_empty.xml", x, y)
-  elseif kind == "pouch" then
-    entity = EntityLoad("data/entities/items/pickup/powder_stash.xml", x, y)
-    empty_container_of_materials(entity)
-    quantity = quantity * 1.5
-  end
-  AddMaterialInventoryMaterial( entity, material, quantity or 1000 )
-end
-
-local function spawn_item(path)
-  local x, y = get_player_pos()
-  local entity = EntityLoad(path, x, y)
-end
-
 local function wrap_spawn(path)
   return function() spawn_item(path) end
 end
@@ -484,16 +408,6 @@ local function wrap_paginate(title, options, page_size, callback)
       end
       grid_panel(title, filtered_set, nil, callback)
     end
-  end
-end
-
-local function round(v)
-  local upper = math.ceil(v)
-  local lower = math.floor(v)
-  if math.abs(v - upper) < math.abs(v - lower) then
-    return upper
-  else
-    return lower
   end
 end
 
@@ -802,12 +716,6 @@ money_panel = Panel{"gold", function()
 end}
 
 -- build these button lists once so we aren't rebuilding them every frame
-local function resolve_localized_name(s, default)
-  if s:sub(1,1) ~= "$" then return s end
-  local rep = GameTextGet(s)
-  if rep and rep ~= "" then return rep else return default or s end
-end
-
 local function localized_name(thing)
   if localization_val.value then return thing.ui_name else return thing.id end
 end
@@ -848,14 +756,6 @@ for idx, card in ipairs(actions) do
     id = id, ui_name = ui_name,
     f = set_always_cast
   }
-end
-
-local function spawn_perk(perk_id, auto_pickup_entity)
-  local x, y = get_player_pos()
-  local perk_entity = perk_spawn( x, y - 8, perk_id )
-  if auto_pickup_entity then
-    perk_pickup(perk_entity, auto_pickup_entity, nil, true, false)
-  end
 end
 
 local function spawn_perk_button(perk)
@@ -909,8 +809,7 @@ table.insert(wand_options, {"Haxx", wrap_spawn("data/hax/wand_hax.xml")})
 local tourist_mode_on = false
 local function toggle_tourist_mode()
   tourist_mode_on = not tourist_mode_on
-  local herd = (tourist_mode_on and "healer") or "player"
-  GenomeSetHerdId( get_player(), herd )
+  set_tourist_mode(tourist_mode_on)
   GamePrint("Tourist mode: " .. tostring(tourist_mode_on))
 end
 
@@ -925,11 +824,6 @@ SetRandomSeed(0, 0)
 seedval = tostring(Random() * 2^31)
 
 local LC, AP, LC_prob, AP_prob = get_alchemy()
-
-local function localize_material(mat)
-  local n = GameTextGet("$mat_" .. mat)
-  if n and n ~= "" then return n else return "[" .. mat .. "]" end
-end
 
 local function format_combo(combo, prob, localize)
   local ret = {}
@@ -996,11 +890,6 @@ local gui_grid_ref_panel = Panel{"gui grid ref.", function()
     end
   end
 end}
-
-local function spawn_item(path)
-  local x, y = get_player_pos()
-  EntityLoad(path, x, y)
-end
 
 local function spawn_item_button(item)
   GamePrint("Attempting to spawn " .. item.path)
