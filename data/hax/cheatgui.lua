@@ -11,7 +11,7 @@ dofile_once("data/hax/gun_builder.lua")
 dofile_once("data/hax/superhackykb.lua")
 dofile_once("data/hax/utils.lua")
 
-local CHEATGUI_VERSION = "1.4.0"
+local CHEATGUI_VERSION = "1.5.0"
 local CHEATGUI_TITLE = "cheatgui " .. CHEATGUI_VERSION
 local console_connected = false
 
