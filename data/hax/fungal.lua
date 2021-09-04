@@ -3,10 +3,20 @@ local _predict_transform = nil
 
 local STASH = cheatgui_stash
 
+if not loadstring then
+  local VIRT_PATH = "mods/cheatgui/_fake_fungal_shift.lua"
+  function loadstring(buf)
+    STASH.ModTextFileSetContent(VIRT_PATH, buf)
+    return loadfile(VIRT_PATH)
+  end
+end
+
+STASH.loadstring = loadstring
+
 local function _dofile(fn)
   local src = STASH.ModTextFileGetContent(fn)
   if not src then return nil end
-  src = loadstring(src)
+  src = STASH.loadstring(src)
   if not src then return nil end
   setfenv(src, fungal_env)
   return src()
@@ -33,14 +43,6 @@ local MOCKED_FUNCTIONS = {
   "EntityRemoveIngestionStatusEffect",
   "print", -- stop fungal_shift from spamming the log!!!
 }
-
-if not loadstring then
-  local VIRT_PATH = "mods/cheatgui/_fake_fungal_shift.lua"
-  function loadstring(buf)
-    set_text(VIRT_PATH, buf)
-    return loadfile(VIRT_PATH)
-  end
-end
 
 local _fungal_iteration = 0
 local function load_fungal_env()
