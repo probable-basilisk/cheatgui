@@ -1,7 +1,7 @@
 dofile("data/scripts/gun/procedural/gun_procedural.lua")
 
 function build_gun(x, y, gun)
-  local entity_id = EntityLoad("data/hax/wand_empty.xml", x, y)
+  local entity_id = EntityLoad(CGPREFIX .. "data/hax/wand_empty.xml", x, y)
 	local ability_comp = EntityGetFirstComponent( entity_id, "AbilityComponent" )
 
   gun.cost = gun.cost or 0

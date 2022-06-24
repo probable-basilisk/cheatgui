@@ -1,3 +1,36 @@
+CGPREFIX = ""
+if __hax then
+  print = __hax.print
+  print("Cheatgui has hax?")
+
+  CGPREFIX = "mods/cheatgui/"
+  local _dofile_once = dofile_once
+  local _loadfile = loadfile
+
+  function dofile_once(fn)
+    if fn:find("data/hax") == 1 then
+      fn = CGPREFIX .. fn
+    end
+    return _dofile_once(fn)
+  end
+
+  function loadfile(fn)
+    if fn:find("data/hax") == 1 then
+      fn = CGPREFIX .. fn
+    end
+    return _loadfile(fn)
+  end
+
+  cheatgui_stash = {}
+  for k, v in pairs(_G) do
+    cheatgui_stash[k] = v
+  end
+
+  CHEATGUI_ICONS = {OPEN="(+)", CLOSE="(-)"}
+else
+  CHEATGUI_ICONS = {OPEN="[+]", CLOSE="[-]"}
+end
+
 dofile_once("data/scripts/lib/coroutines.lua")
 dofile_once("data/scripts/lib/utilities.lua")
 dofile_once("data/scripts/perks/perk.lua")
@@ -151,7 +184,7 @@ end
 
 local function breadcrumbs(x, y)
   GuiLayoutBeginHorizontal(gui, x, y)
-  if GuiButton( gui, 0, 0, "[-]", next_id()) then
+  if GuiButton( gui, 0, 0, CHEATGUI_ICONS.CLOSE, next_id()) then
     hide_gui()
   end
   for idx, panel in ipairs(panel_stack) do
@@ -195,9 +228,9 @@ local function register_widget(wname, w)
   table.insert(_all_info_widgets, {wname, w})
 end
 
-closed_panel = Panel{"[+]", function()
+closed_panel = Panel{CHEATGUI_ICONS.OPEN, function()
   GuiLayoutBeginHorizontal( gui, 1, 0 )
-  if GuiButton( gui, 0, 0, "[+]", next_id() ) then
+  if GuiButton( gui, 0, 0, CHEATGUI_ICONS.OPEN, next_id() ) then
     show_gui()
   end
   GuiLayoutEnd( gui )
@@ -804,7 +837,7 @@ for i = 1, 5 do
     wrap_spawn("data/entities/items/wand_level_0" .. i .. ".xml")
   }
 end
-table.insert(wand_options, {"Haxx", wrap_spawn("data/hax/wand_hax.xml")})
+table.insert(wand_options, {"Haxx", wrap_spawn(CGPREFIX .. "data/hax/wand_hax.xml")})
 
 local tourist_mode_on = false
 local function toggle_tourist_mode()
@@ -1166,8 +1199,18 @@ function _cheat_gui_main()
     end
   end
 
-  wake_up_waiting_threads(1) -- from coroutines.lua
+  if not __hax then 
+    wake_up_waiting_threads(1) -- from coroutines.lua
+  end
   if console_connected and _socket_update then _socket_update() end
 end
 
 hide_gui()
+
+if __hax then
+  print("cheatgui: starting coroutine loop")
+  async_loop(function()
+    _cheat_gui_main()
+    wait(0)
+  end)
+end
