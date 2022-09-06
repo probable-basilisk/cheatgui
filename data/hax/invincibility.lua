@@ -1,0 +1,1 @@
+ComponentSetValue2(EntityGetComponent(EntityGetWithTag("player_unit")[1], "DamageModelComponent")[1], "invincibility_frames", 2)
