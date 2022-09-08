@@ -806,6 +806,63 @@ for i = 1, 5 do
 end
 table.insert(wand_options, {"Haxx", wrap_spawn("data/hax/wand_hax.xml")})
 
+local infinite_charges_on = false
+local infinite_charges_component_id
+local function toggle_infinite_charges()
+  infinite_charges_on = not infinite_charges_on
+  local player = get_player()
+  if infinite_charges_on then
+    infinite_charges_component_id = EntityAddComponent2(player, "LuaComponent", {
+      execute_on_added="1",
+      remove_after_executed="0",
+      execute_every_n_frame="1",
+      script_source_file="mods/cheatgui/data/hax/refresh.lua",
+    })
+  else
+    EntityRemoveComponent(player, infinite_charges_component_id)
+  end
+  GamePrint("Infinite spell charges: " .. tostring(infinite_charges_on))
+end
+
+local invincibility_on = false
+local invincibility_component_id
+local function toggle_invincibility()
+  invincibility_on = not invincibility_on
+  local player = get_player()
+  if invincibility_on then
+    invincibility_component_id = EntityAddComponent2(player, "LuaComponent", {
+      execute_on_added="1",
+      remove_after_executed="0",
+      execute_every_n_frame="1",
+      script_source_file="mods/cheatgui/data/hax/invincibility.lua",
+    })
+    -- Player is vulnerable when polymorphed, so prevent it.
+    EntityAddTag(player, "polymorphable_NOT")
+  else
+    EntityRemoveComponent(player, invincibility_component_id)
+    EntityRemoveTag(player, "polymorphable_NOT")
+  end
+  GamePrint("Invincibility: " .. tostring(invincibility_on))
+end
+
+local infinite_flight_on = false
+local infinite_flight_component_id
+local function toggle_infinite_flight()
+  infinite_flight_on = not infinite_flight_on
+  local player = get_player()
+  if infinite_flight_on then
+    infinite_flight_component_id = EntityAddComponent2(player, "LuaComponent", {
+      execute_on_added="1",
+      remove_after_executed="0",
+      execute_every_n_frame="1",
+      script_source_file="mods/cheatgui/data/hax/flight.lua",
+    })
+  else
+    EntityRemoveComponent(player, infinite_flight_component_id)
+  end
+  GamePrint("Infinite flight: " .. tostring(infinite_flight_on))
+end
+
 local tourist_mode_on = false
 local function toggle_tourist_mode()
   tourist_mode_on = not tourist_mode_on
@@ -1055,6 +1112,18 @@ register_cheat_button("[spell refresh]", function()
 end)
 
 register_cheat_button("[full heal]", function() quick_heal() end)
+
+register_cheat_button(function()
+  return "[" .. ((infinite_charges_on and "disable") or "enable") .. " infinite charges]"
+end, toggle_infinite_charges)
+
+register_cheat_button(function()
+  return "[" .. ((invincibility_on and "disable") or "enable") .. " invincibility]"
+end, toggle_invincibility)
+
+register_cheat_button(function()
+  return "[" .. ((infinite_flight_on and "disable") or "enable") .. " infinite flight]"
+end, toggle_infinite_flight)
 
 register_cheat_button("[end fungal trip]", function()
   EntityRemoveIngestionStatusEffect(get_player(), "TRIP" )
