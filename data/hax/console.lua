@@ -1,8 +1,10 @@
 dofile_once("data/scripts/lib/coroutines.lua")
 
 local pollnet = nil
+local JSON = nil
 local function link_pollnet()
-  if not pollnet then pollnet = require("mods.cheatgui.data.hax.lib.pollnet") end
+  if not pollnet then pollnet = require("mods.cheatgui.lib.pollnet") end
+  if not JSON then JSON = require("mods.cheatgui.lib.json") end
 end
 
 -- this empty table is used as a special value that will suppress
@@ -268,7 +270,6 @@ end
 
 local function get_token()
   if not auth_token then
-    if not JSON then dofile_once("data/hax/lib/json.lua") end
     local tdata = read_raw_file(TOKEN_FN)
     if tdata then 
       tdata = JSON:decode(tdata) 

@@ -1,7 +1,3 @@
--- This file is huge and Noita doesn't have real requires, so
--- manually guard against multiple dofiles
-if JSON then return end
-
 -- -*- coding: utf-8 -*-
 --
 -- Simple JSON encoding and decoding in pure Lua.
@@ -1592,8 +1588,7 @@ function OBJDEF:new(args)
    return setmetatable(new, OBJDEF)
 end
 
-JSON = OBJDEF:new() -- Noita expects to just dofile everything :(
---return OBJDEF:new()
+return OBJDEF:new()
 
 --
 -- Version history:
