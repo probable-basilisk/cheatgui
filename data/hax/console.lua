@@ -1,5 +1,9 @@
-dofile_once("data/hax/lib/pollnet.lua")
 dofile_once("data/scripts/lib/coroutines.lua")
+
+local pollnet = nil
+local function link_pollnet()
+  if not pollnet then pollnet = require("mods.cheatgui.data.hax.lib.pollnet") end
+end
 
 -- this empty table is used as a special value that will suppress
 -- printing any kind of "RES>" value (normally "[no value]" would print)
@@ -229,7 +233,6 @@ local function _collect(happy, ...)
   end
 end
 
-local SCRATCH_SIZE = 1000000 -- might as well have a safe meg of space
 local ws_server_socket = nil
 local http_server = nil
 local ws_clients = {}
@@ -255,7 +258,7 @@ end
 local auth_token = nil
 local function generate_token()
   print("Cheatgui webconsole: generating new token.")
-  auth_token = lib_pollnet.nanoid()
+  auth_token = pollnet.nanoid()
   write_raw_file(TOKEN_FN, JSON:encode_pretty{
     token = auth_token,
     expiration = os.time() + TOKEN_EXPIRATION
@@ -311,11 +314,11 @@ local function on_new_client(sock, addr)
 end
 
 function listen_console_connections()
-  lib_pollnet.link()
+  link_pollnet()
   if not ws_server_socket then
-    ws_server_socket = lib_pollnet.listen_ws("127.0.0.1:9777", SCRATCH_SIZE)
+    ws_server_socket = pollnet.listen_ws("127.0.0.1:9777")
     ws_server_socket:on_connection(on_new_client)
-    http_server = lib_pollnet.serve_http("127.0.0.1:8777", "mods/cheatgui/www")
+    http_server = pollnet.serve_http("127.0.0.1:8777", "mods/cheatgui/www")
   end
   return get_token()
 end
